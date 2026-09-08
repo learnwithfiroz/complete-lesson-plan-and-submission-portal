@@ -98,15 +98,19 @@ class SystemDeployController extends Controller
             } elseif ($action === 'migrate_only') {
                 Artisan::call('migrate', ['--force' => true]);
                 $outputs[] = trim(Artisan::output());
-            } elseif ($action === 'seed_only' || $action === 'seed_users') {
+            } elseif ($action === 'seed_only' || $action === 'seed_users' || $action === 'seed_staff') {
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\DepartmentSeeder']);
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\UserSeeder']);
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\StaffAndTeacherSeeder']);
                 $outputs[] = trim(Artisan::output());
             } else {
                 // Default: migrate and ensure seeders run
                 Artisan::call('migrate', ['--force' => true]);
                 $outputs[] = trim(Artisan::output());
 
-                Artisan::call('db:seed', ['--force' => true]);
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\DepartmentSeeder']);
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\UserSeeder']);
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\StaffAndTeacherSeeder']);
                 $outputs[] = trim(Artisan::output());
             }
 
@@ -173,16 +177,11 @@ class SystemDeployController extends Controller
             Artisan::call('migrate', ['--force' => true]);
             $migrateOutput = Artisan::output();
 
-            // 2. Safely sync/seed users
+            // 2. Safely sync/seed departments and users
+            Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\DepartmentSeeder']);
             Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\UserSeeder']);
+            Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\StaffAndTeacherSeeder']);
             $seedOutput = Artisan::output();
-
-            try {
-                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\StaffAndTeacherSeeder']);
-                $seedOutput .= "\n" . Artisan::output();
-            } catch (\Throwable $e) {
-                // ignore
-            }
 
             // 3. Clear and optimize caches
             Artisan::call('optimize:clear');

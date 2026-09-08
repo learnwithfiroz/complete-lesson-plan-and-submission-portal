@@ -55,6 +55,8 @@ class UserSeeder extends Seeder
         $coord1 = User::updateOrCreate(
             ['email' => 'coordinator@bsisc.edu.bd'],
             [
+                'serial_number' => 179,
+                'employee_id' => 'BSISC-179',
                 'name' => 'Prof. Shamima Nasrin',
                 'name_bn' => 'অধ্যাপক শামীমা নাসরিন',
                 'password' => $defaultPassword,
@@ -69,6 +71,8 @@ class UserSeeder extends Seeder
         $coord2 = User::updateOrCreate(
             ['email' => 'masuma.mamataz@bsisc.edu.bd'],
             [
+                'serial_number' => 2,
+                'employee_id' => 'BSISC-002',
                 'name' => 'Masuma Mamataz',
                 'name_bn' => 'মাসুমা মমতাজ',
                 'password' => $defaultPassword,
@@ -85,6 +89,8 @@ class UserSeeder extends Seeder
 
         $teachers = [
             [
+                'serial_number' => 4,
+                'employee_id' => 'BSISC-004',
                 'email' => 'aziza.taher@bsisc.edu.bd',
                 'name' => 'Aziza Taher',
                 'name_bn' => 'আজিজা তাহের',
@@ -93,6 +99,8 @@ class UserSeeder extends Seeder
                 'department_id' => $mathDept?->id,
             ],
             [
+                'serial_number' => 5,
+                'employee_id' => 'BSISC-005',
                 'email' => 'zebin.akter@bsisc.edu.bd',
                 'name' => 'Zebin Akter',
                 'name_bn' => 'জেবিন আক্তার',
@@ -101,6 +109,8 @@ class UserSeeder extends Seeder
                 'department_id' => $engDept?->id,
             ],
             [
+                'serial_number' => 180,
+                'employee_id' => 'BSISC-180',
                 'email' => 'teacher1@bsisc.edu.bd',
                 'name' => 'Mohammad Tanvir Ahmed',
                 'name_bn' => 'মোহাম্মদ তানভীর আহমেদ',
@@ -109,6 +119,8 @@ class UserSeeder extends Seeder
                 'department_id' => $mathDept?->id,
             ],
             [
+                'serial_number' => 181,
+                'employee_id' => 'BSISC-181',
                 'email' => 'teacher2@bsisc.edu.bd',
                 'name' => 'Farhana Yasmin',
                 'name_bn' => 'ফারহানা ইয়াসমিন',
@@ -117,6 +129,8 @@ class UserSeeder extends Seeder
                 'department_id' => $engDept?->id,
             ],
             [
+                'serial_number' => 182,
+                'employee_id' => 'BSISC-182',
                 'email' => 'teacher3@bsisc.edu.bd',
                 'name' => 'Kazi Nazmul Huda',
                 'name_bn' => 'কাজী নাজমুল হুদা',
@@ -125,6 +139,8 @@ class UserSeeder extends Seeder
                 'department_id' => $sciDept?->id,
             ],
             [
+                'serial_number' => 183,
+                'employee_id' => 'BSISC-183',
                 'email' => 'teacher4@bsisc.edu.bd',
                 'name' => 'Nusrat Jahan',
                 'name_bn' => 'নুসরাত জাহান',
@@ -133,6 +149,8 @@ class UserSeeder extends Seeder
                 'department_id' => $banDept?->id,
             ],
             [
+                'serial_number' => 184,
+                'employee_id' => 'BSISC-184',
                 'email' => 'teacher5@bsisc.edu.bd',
                 'name' => 'Mahbubur Rahman',
                 'name_bn' => 'মাহবুবুর রহমান',

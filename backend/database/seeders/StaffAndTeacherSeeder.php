@@ -50,34 +50,54 @@ class StaffAndTeacherSeeder extends Seeder
             'description' => 'Class Attendant / Transport / Security / Hygiene Staff',
         ]);
 
-        // 2. Ensure Super Admin Account
+        // 2. Fetch Departments for accurate department mapping
+        $depts = Department::all()->keyBy('code');
+        $sciDept = $depts['SCI'] ?? null;
+        $mathDept = $depts['MATH'] ?? null;
+        $engDept = $depts['ENG'] ?? null;
+        $banDept = $depts['BAN'] ?? null;
+        $ictDept = $depts['ICT'] ?? null;
+        $busDept = $depts['BUS'] ?? null;
+        $socDept = $depts['SOC'] ?? null;
+        $relDept = $depts['REL'] ?? null;
+        $artDept = $depts['ART'] ?? null;
+        $admDept = $depts['ADM'] ?? null;
+
+        // 3. Ensure Super Admin Account
         $admin = User::updateOrCreate(
             ['email' => 'admin@bsisc.edu.bd'],
             [
+                'serial_number' => 0,
+                'employee_id' => 'BSISC-ADMIN',
                 'name' => 'System Administrator',
                 'salutation' => 'Engr.',
                 'gender' => 'Male',
                 'phone' => '01711000001',
                 'password' => Hash::make('Password123!'),
                 'designation' => 'Lead Systems Engineer',
+                'department_id' => $admDept?->id,
                 'is_active' => true,
             ]
         );
         $admin->roles()->sync([$superAdminRole->id]);
 
-        // 3. Read Raw TSV
+        // 4. Read Raw TSV
         $tsvFile = __DIR__ . '/raw_staff.tsv';
         if (!file_exists($tsvFile)) return;
 
         $lines = explode("\n", trim(file_get_contents($tsvFile)));
         $usedEmails = ['admin@bsisc.edu.bd' => true];
 
-        foreach ($lines as $line) {
+        $sl = 0;
+        foreach ($lines as $index => $line) {
             $line = trim($line);
             if (empty($line)) continue;
 
             $parts = explode("\t", $line);
             if (count($parts) < 5) continue;
+
+            $sl++;
+            $empId = 'BSISC-' . str_pad($sl, 3, '0', STR_PAD_LEFT);
 
             $fullName = trim($parts[0]);
             $gender = trim($parts[1]);
@@ -106,12 +126,37 @@ class StaffAndTeacherSeeder extends Seeder
 
             $desigLower = strtolower($designation);
             $targetRoleId = $staffRole->id;
+            $deptId = $admDept?->id;
 
+            // Department resolution based on designation keywords
+            if (str_contains($desigLower, 'math')) {
+                $deptId = $mathDept?->id;
+            } elseif (str_contains($desigLower, 'physics') || str_contains($desigLower, 'chemistry') || str_contains($desigLower, 'biology') || str_contains($desigLower, 'science')) {
+                $deptId = $sciDept?->id;
+            } elseif (str_contains($desigLower, 'english')) {
+                $deptId = $engDept?->id;
+            } elseif (str_contains($desigLower, 'bangla') || str_contains($desigLower, 'bengali')) {
+                $deptId = $banDept?->id;
+            } elseif (str_contains($desigLower, 'ict') || str_contains($desigLower, 'computer')) {
+                $deptId = $ictDept?->id;
+            } elseif (str_contains($desigLower, 'accounting') || str_contains($desigLower, 'finance') || str_contains($desigLower, 'business') || str_contains($desigLower, 'commerce')) {
+                $deptId = $busDept?->id;
+            } elseif (str_contains($desigLower, 'islam') || str_contains($desigLower, 'religion') || str_contains($desigLower, 'hindu') || str_contains($desigLower, 'moral')) {
+                $deptId = $relDept?->id;
+            } elseif (str_contains($desigLower, 'art') || str_contains($desigLower, 'physical') || str_contains($desigLower, 'sports') || str_contains($desigLower, 'music') || str_contains($desigLower, 'craft')) {
+                $deptId = $artDept?->id;
+            } elseif (str_contains($desigLower, 'social') || str_contains($desigLower, 'history') || str_contains($desigLower, 'geography') || str_contains($desigLower, 'civics') || str_contains($desigLower, 'bgs')) {
+                $deptId = $socDept?->id;
+            }
+
+            // Role resolution
             if (str_contains($desigLower, 'principal') && !str_contains($desigLower, 'vp') && !str_contains($desigLower, 'vice')) {
                 $targetRoleId = $principalRole->id;
                 $email = 'principal@bsisc.edu.bd';
+                $deptId = $admDept?->id;
             } elseif (str_contains($desigLower, 'vp') || str_contains($desigLower, 'vice principal') || str_contains($desigLower, 'coordinator')) {
                 $targetRoleId = $coordRole->id;
+                $deptId = $admDept?->id;
             } elseif (
                 str_contains($desigLower, 'teacher') ||
                 str_contains($desigLower, 'instructor') ||
@@ -135,8 +180,10 @@ class StaffAndTeacherSeeder extends Seeder
                 str_contains($desigLower, 'caretaker')
             ) {
                 $targetRoleId = $supportStaffRole->id;
+                $deptId = $admDept?->id;
             } else {
                 $targetRoleId = $staffRole->id;
+                $deptId = $admDept?->id;
             }
 
             $counter = 1;
@@ -165,6 +212,8 @@ class StaffAndTeacherSeeder extends Seeder
                 $email = $checkEmail;
 
                 $user = User::create([
+                    'serial_number' => $sl,
+                    'employee_id' => $empId,
                     'name' => $fullName,
                     'salutation' => $salutation,
                     'gender' => $gender,
@@ -172,16 +221,20 @@ class StaffAndTeacherSeeder extends Seeder
                     'phone' => $mobile,
                     'password' => $passwordHash,
                     'designation' => $designation,
+                    'department_id' => $deptId,
                     'is_active' => true,
                 ]);
             } else {
                 $user->update([
+                    'serial_number' => $sl,
+                    'employee_id' => $empId,
                     'name' => $fullName,
                     'salutation' => $salutation,
                     'gender' => $gender,
                     'phone' => $mobile,
                     'password' => $passwordHash,
                     'designation' => $designation,
+                    'department_id' => $deptId,
                     'is_active' => true,
                 ]);
             }
@@ -190,6 +243,6 @@ class StaffAndTeacherSeeder extends Seeder
             $user->roles()->sync([$targetRoleId]);
         }
 
-        echo "Successfully seeded " . count($lines) . " BSISC faculty and staff with mobile numbers and passwords!\n";
+        echo "Successfully seeded " . $sl . " BSISC faculty and staff with SL, EMP ID, departments, and credentials!\n";
     }
 }

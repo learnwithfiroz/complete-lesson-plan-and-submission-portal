@@ -17,6 +17,9 @@ class DepartmentSeeder extends Seeder
             ['name_bn' => 'সামাজিক বিজ্ঞান বিভাগ', 'name_en' => 'Social Science Department', 'code' => 'SOC', 'description' => 'Bangladesh & Global Studies, History'],
             ['name_bn' => 'তথ্য ও যোগাযোগ প্রযুক্তি বিভাগ', 'name_en' => 'ICT Department', 'code' => 'ICT', 'description' => 'Information & Communication Technology'],
             ['name_bn' => 'ব্যবসায় শিক্ষা বিভাগ', 'name_en' => 'Business Studies Department', 'code' => 'BUS', 'description' => 'Accounting, Finance, Business Org'],
+            ['name_bn' => 'ধর্ম ও নৈতিক শিক্ষা বিভাগ', 'name_en' => 'Religion & Moral Studies', 'code' => 'REL', 'description' => 'Islam & Moral, Hindu Studies'],
+            ['name_bn' => 'চারু ও শারীরিক শিক্ষা বিভাগ', 'name_en' => 'Arts & Physical Education', 'code' => 'ART', 'description' => 'Arts & Crafts, Physical Education'],
+            ['name_bn' => 'প্রশাসন ও সাধারণ শাখা', 'name_en' => 'Administration & General', 'code' => 'ADM', 'description' => 'Leadership, Administration & Support'],
         ];
 
         foreach ($departments as $dept) {
