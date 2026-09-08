@@ -10,16 +10,20 @@ Route::get('/{any}', function (Request $request) {
             'system' => 'School Lesson Plan Management System REST API',
             'status' => 'operational',
             'version' => '1.0.0',
-            'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
             'timestamp' => now()->toIso8601String(),
         ]);
     }
 
     $indexPath = public_path('index.html');
-    if (File::exists($indexPath)) {
-        return response()->file($indexPath);
+    if (file_exists($indexPath)) {
+        return response(file_get_contents($indexPath), 200, [
+            'Content-Type' => 'text/html; charset=utf-8',
+        ]);
     }
 
-    $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
-    return redirect()->away($frontendUrl);
+    return response()->json([
+        'system' => 'School Lesson Plan Management System REST API',
+        'status' => 'operational',
+        'version' => '1.0.0',
+    ]);
 })->where('any', '^(?!api).*$');
