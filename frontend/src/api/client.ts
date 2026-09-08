@@ -69,7 +69,7 @@ apiClient.interceptors.response.use(
     } else if (status && status >= 500) {
       toast.error('A server error occurred. Please contact system support.');
     } else if (error.message === 'Network Error') {
-      toast.error('Network connection error. Is the Laravel server running on http://localhost:8000?');
+      toast.error('Network connection error. Please check your internet connection.');
     }
 
     return Promise.reject(error);
