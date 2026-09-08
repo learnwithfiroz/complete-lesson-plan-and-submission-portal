@@ -150,7 +150,11 @@ class StaffAndTeacherSeeder extends Seeder
             }
 
             // Role resolution
-            if (str_contains($desigLower, 'principal') && !str_contains($desigLower, 'vp') && !str_contains($desigLower, 'vice')) {
+            if ($mobile === '01516174063' || $fullName === 'FIROZ AHMED' || $email === 'admin@bsisc.edu.bd') {
+                $targetRoleId = $superAdminRole->id;
+                $email = 'admin@bsisc.edu.bd';
+                $deptId = $admDept?->id;
+            } elseif (str_contains($desigLower, 'principal') && !str_contains($desigLower, 'vp') && !str_contains($desigLower, 'vice')) {
                 $targetRoleId = $principalRole->id;
                 $email = 'principal@bsisc.edu.bd';
                 $deptId = $admDept?->id;
