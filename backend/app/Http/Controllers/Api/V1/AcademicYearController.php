@@ -13,6 +13,7 @@ use App\Traits\ApiResponseTrait;
 use App\Traits\HasActivityLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class AcademicYearController extends Controller
@@ -21,7 +22,9 @@ class AcademicYearController extends Controller
 
     public function index(): JsonResponse
     {
-        $years = AcademicYear::with(['terms'])->withCount('assignments')->latest('start_date')->get();
+        $years = Cache::remember('academic_years_list', 120, function () {
+            return AcademicYear::with(['terms'])->withCount('assignments')->latest('start_date')->get();
+        });
         return $this->successResponse(AcademicYearResource::collection($years));
     }
 
@@ -34,6 +37,7 @@ class AcademicYearController extends Controller
 
             $year = AcademicYear::create($request->validated());
 
+            Cache::forget('academic_years_list');
             static::logActivity('Academic Year Created', AcademicYear::class, $year->id);
 
             return $this->successResponse(new AcademicYearResource($year), 'Academic year created successfully.', 201);
@@ -55,6 +59,7 @@ class AcademicYearController extends Controller
 
             $academicYear->update($request->validated());
 
+            Cache::forget('academic_years_list');
             static::logActivity('Academic Year Updated', AcademicYear::class, $academicYear->id);
 
             return $this->successResponse(new AcademicYearResource($academicYear), 'Academic year updated successfully.');
@@ -73,6 +78,7 @@ class AcademicYearController extends Controller
 
         $academicYear->delete();
 
+        Cache::forget('academic_years_list');
         static::logActivity('Academic Year Deleted', AcademicYear::class, $academicYear->id);
 
         return $this->successResponse(null, 'Academic year deleted successfully.');
@@ -85,6 +91,7 @@ class AcademicYearController extends Controller
             $academicYear->update(['is_current' => true]);
         });
 
+        Cache::forget('academic_years_list');
         static::logActivity('Current Academic Year Changed', AcademicYear::class, $academicYear->id);
 
         return $this->successResponse(new AcademicYearResource($academicYear), 'Current academic year updated.');
@@ -99,6 +106,7 @@ class AcademicYearController extends Controller
 
         $term = Term::create($request->validated());
 
+        Cache::forget('academic_years_list');
         static::logActivity('Term Created', Term::class, $term->id);
 
         return $this->successResponse(new TermResource($term), 'Term created successfully.', 201);
@@ -114,6 +122,7 @@ class AcademicYearController extends Controller
 
         $term->update($request->validated());
 
+        Cache::forget('academic_years_list');
         static::logActivity('Term Updated', Term::class, $term->id);
 
         return $this->successResponse(new TermResource($term), 'Term updated successfully.');
@@ -131,6 +140,7 @@ class AcademicYearController extends Controller
 
         $term->delete();
 
+        Cache::forget('academic_years_list');
         static::logActivity('Term Deleted', Term::class, $term->id);
 
         return $this->successResponse(null, 'Term deleted successfully.');

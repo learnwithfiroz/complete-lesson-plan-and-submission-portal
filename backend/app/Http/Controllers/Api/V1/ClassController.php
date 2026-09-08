@@ -14,21 +14,29 @@ use App\Traits\HasActivityLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+use Illuminate\Support\Facades\Cache;
+
 class ClassController extends Controller
 {
     use ApiResponseTrait, HasActivityLog;
 
     public function index(Request $request): JsonResponse
     {
-        $query = SchoolClass::with(['sections', 'subjects.department'])
-            ->withCount(['sections', 'subjects'])
-            ->orderBy('numeric_value');
+        $activeOnly = $request->boolean('active_only');
+        $cacheKey = 'classes_list_' . ($activeOnly ? 'active' : 'all');
 
-        if ($request->boolean('active_only')) {
-            $query->where('is_active', true);
-        }
+        $classes = Cache::remember($cacheKey, 60, function () use ($activeOnly) {
+            $query = SchoolClass::with(['sections', 'subjects.department'])
+                ->withCount(['sections', 'subjects'])
+                ->orderBy('numeric_value');
 
-        $classes = $query->get();
+            if ($activeOnly) {
+                $query->where('is_active', true);
+            }
+
+            return $query->get();
+        });
+
         return $this->successResponse(SchoolClassResource::collection($classes));
     }
 
@@ -36,6 +44,8 @@ class ClassController extends Controller
     {
         $class = SchoolClass::create($request->validated());
 
+        Cache::forget('classes_list_active');
+        Cache::forget('classes_list_all');
         static::logActivity('Class Created', SchoolClass::class, $class->id);
 
         return $this->successResponse(new SchoolClassResource($class), 'Class created successfully.', 201);
@@ -51,6 +61,8 @@ class ClassController extends Controller
     {
         $class->update($request->validated());
 
+        Cache::forget('classes_list_active');
+        Cache::forget('classes_list_all');
         static::logActivity('Class Updated', SchoolClass::class, $class->id);
 
         return $this->successResponse(new SchoolClassResource($class), 'Class updated successfully.');
@@ -68,6 +80,8 @@ class ClassController extends Controller
 
         $class->delete();
 
+        Cache::forget('classes_list_active');
+        Cache::forget('classes_list_all');
         static::logActivity('Class Deleted', SchoolClass::class, $class->id);
 
         return $this->successResponse(null, 'Class deleted successfully.');

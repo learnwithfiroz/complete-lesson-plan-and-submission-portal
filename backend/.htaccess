@@ -6,3 +6,19 @@ DirectoryIndex public/index.html public/index.php index.html index.php
     RewriteRule ^(.*)$ public/$1 [L,QSA]
 </IfModule>
 
+# 1. Gzip Compression for high-throughput responses
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain text/html text/xml text/css application/xml application/xhtml+xml application/rss+xml application/javascript application/x-javascript application/json image/svg+xml
+</IfModule>
+
+# 2. Fast Caching Headers
+<IfModule mod_headers.c>
+    <FilesMatch "\.(ico|pdf|flv|jpg|jpeg|png|gif|webp|js|css|swf|woff2|woff|ttf|svg)$">
+        Header set Cache-Control "max-age=31536000, public, immutable"
+    </FilesMatch>
+    <FilesMatch "\.(html|htm)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+    Header set Connection keep-alive
+</IfModule>
+

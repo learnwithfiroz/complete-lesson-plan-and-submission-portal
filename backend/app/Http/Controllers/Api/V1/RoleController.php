@@ -13,6 +13,8 @@ use App\Traits\HasActivityLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+use Illuminate\Support\Facades\Cache;
+
 class RoleController extends Controller
 {
     use ApiResponseTrait, HasActivityLog;
@@ -23,7 +25,9 @@ class RoleController extends Controller
             return $this->forbiddenResponse();
         }
 
-        $roles = Role::with(['permissions', 'users'])->withCount('users')->get();
+        $roles = Cache::remember('roles_list', 120, function () {
+            return Role::with(['permissions', 'users'])->withCount('users')->get();
+        });
 
         return $this->successResponse(RoleResource::collection($roles));
     }
@@ -46,6 +50,9 @@ class RoleController extends Controller
 
         $role->permissions()->sync($request->permission_ids);
 
+        Cache::forget('roles_list');
+        Cache::forget('permissions_grouped');
+
         static::logActivity('Role Permissions Updated', Role::class, $role->id, [
             'role' => $role->name,
             'permission_count' => count($request->permission_ids),
@@ -58,7 +65,9 @@ class RoleController extends Controller
 
     public function permissions(Request $request): JsonResponse
     {
-        $permissions = Permission::all()->groupBy('module');
+        $permissions = Cache::remember('permissions_grouped', 300, function () {
+            return Permission::all()->groupBy('module');
+        });
         return $this->successResponse($permissions);
     }
 }

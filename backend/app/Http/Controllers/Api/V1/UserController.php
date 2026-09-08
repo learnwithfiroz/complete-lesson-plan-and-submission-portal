@@ -11,6 +11,7 @@ use App\Traits\ApiResponseTrait;
 use App\Traits\HasActivityLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -83,13 +84,15 @@ class UserController extends Controller
         $perPage = min((int)($request->input('per_page', 50)), 250);
         $users = $query->orderByRaw('serial_number IS NULL, serial_number ASC, name ASC')->paginate($perPage);
 
-        $counts = [
-            'all' => User::count(),
-            'teachers' => User::whereHas('roles', fn($q) => $q->where('name', 'teacher'))->count(),
-            'leadership' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['principal', 'academic_coordinator']))->count(),
-            'staff' => User::whereHas('roles', fn($q) => $q->where('name', 'staff'))->count(),
-            'support' => User::whereHas('roles', fn($q) => $q->where('name', 'support_staff'))->count(),
-        ];
+        $counts = Cache::remember('user_group_counts', 60, function () {
+            return [
+                'all' => User::count(),
+                'teachers' => User::whereHas('roles', fn($q) => $q->where('name', 'teacher'))->count(),
+                'leadership' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['principal', 'academic_coordinator']))->count(),
+                'staff' => User::whereHas('roles', fn($q) => $q->where('name', 'staff'))->count(),
+                'support' => User::whereHas('roles', fn($q) => $q->where('name', 'support_staff'))->count(),
+            ];
+        });
 
         return $this->successResponse(
             UserResource::collection($users),
@@ -124,6 +127,7 @@ class UserController extends Controller
 
             $user->roles()->sync($request->role_ids);
 
+            Cache::forget('user_group_counts');
             static::logActivity('User Created', User::class, $user->id, ['name' => $user->name, 'email' => $user->email]);
 
             $user->load(['roles.permissions', 'department']);
@@ -165,6 +169,7 @@ class UserController extends Controller
             $user->update($data);
             $user->roles()->sync($request->role_ids);
 
+            Cache::forget('user_group_counts');
             static::logActivity('User Updated', User::class, $user->id);
 
             $user->load(['roles.permissions', 'department']);
@@ -187,6 +192,7 @@ class UserController extends Controller
         $user->is_active = !$user->is_active;
         $user->save();
 
+        Cache::forget('user_group_counts');
         $statusText = $user->is_active ? 'activated' : 'deactivated';
         static::logActivity("User {$statusText}", User::class, $user->id);
 
@@ -205,6 +211,7 @@ class UserController extends Controller
 
         $user->delete();
 
+        Cache::forget('user_group_counts');
         static::logActivity('User Deleted', User::class, $user->id);
 
         return $this->successResponse(null, 'User deleted successfully.');

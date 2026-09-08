@@ -34,6 +34,12 @@ export default defineConfig({
             if (id.includes('react-bootstrap') || id.includes('bootstrap')) {
               return 'vendor-ui';
             }
+            if (id.includes('chart.js') || id.includes('react-chartjs-2')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('react-hook-form') || id.includes('@hookform') || id.includes('zod')) {
+              return 'vendor-forms';
+            }
             if (id.includes('@tanstack/react-query')) {
               return 'vendor-query';
             }

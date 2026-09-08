@@ -12,6 +12,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
@@ -19,81 +20,87 @@ class DashboardController extends Controller
     public function stats(Request $request): JsonResponse
     {
         $user = $request->user();
-        $isTeacher = $user->hasRole('teacher') && !$user->hasRole(['super_admin', 'principal', 'academic_coordinator']);
+        $cacheKey = "dash_stats_{$user->id}_" . md5(json_encode($user->roles->pluck('name')));
 
-        $baseQuery = LessonPlan::query();
-        if ($isTeacher) {
-            $baseQuery->where('teacher_id', $user->id);
-        } elseif ($user->hasRole('academic_coordinator') && $user->department_id) {
-            $baseQuery->where(function ($q) use ($user) {
-                $q->where('department_id', $user->department_id)->orWhere('teacher_id', $user->id);
-            });
-        }
+        $data = Cache::remember($cacheKey, 30, function () use ($user) {
+            $isTeacher = $user->hasRole('teacher') && !$user->hasRole(['super_admin', 'principal', 'academic_coordinator']);
 
-        $totalPlans = (clone $baseQuery)->count();
-        $draftPlans = (clone $baseQuery)->where('status', 'draft')->count();
-        $submittedPlans = (clone $baseQuery)->where('status', 'submitted')->count();
-        $underReviewPlans = (clone $baseQuery)->where('status', 'under_review')->count();
-        $approvedPlans = (clone $baseQuery)->where('status', 'approved')->count();
-        $returnedPlans = (clone $baseQuery)->where('status', 'returned')->count();
-        $rejectedPlans = (clone $baseQuery)->where('status', 'rejected')->count();
+            $baseQuery = LessonPlan::query();
+            if ($isTeacher) {
+                $baseQuery->where('teacher_id', $user->id);
+            } elseif ($user->hasRole('academic_coordinator') && $user->department_id) {
+                $baseQuery->where(function ($q) use ($user) {
+                    $q->where('department_id', $user->department_id)->orWhere('teacher_id', $user->id);
+                });
+            }
 
-        // Weekly submission trends (last 7 days)
-        $sevenDaysAgo = Carbon::today()->subDays(6);
-        $dailySubmissions = (clone $baseQuery)
-            ->where('lesson_date', '>=', $sevenDaysAgo)
-            ->select(DB::raw('DATE(lesson_date) as date'), DB::raw('COUNT(*) as count'))
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get()
-            ->pluck('count', 'date');
+            // Single aggregated status count query
+            $agg = (clone $baseQuery)
+                ->selectRaw("
+                    COUNT(*) as total,
+                    COALESCE(SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END), 0) as draft,
+                    COALESCE(SUM(CASE WHEN status = 'submitted' THEN 1 ELSE 0 END), 0) as submitted,
+                    COALESCE(SUM(CASE WHEN status = 'under_review' THEN 1 ELSE 0 END), 0) as under_review,
+                    COALESCE(SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END), 0) as approved,
+                    COALESCE(SUM(CASE WHEN status = 'returned' THEN 1 ELSE 0 END), 0) as returned,
+                    COALESCE(SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END), 0) as rejected
+                ")
+                ->first();
 
-        $trendDates = [];
-        $trendCounts = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $d = Carbon::today()->subDays($i)->format('Y-m-d');
-            $trendDates[] = Carbon::parse($d)->format('M d');
-            $trendCounts[] = $dailySubmissions[$d] ?? 0;
-        }
+            // Weekly submission trends (last 7 days)
+            $sevenDaysAgo = Carbon::today()->subDays(6);
+            $dailySubmissions = (clone $baseQuery)
+                ->where('lesson_date', '>=', $sevenDaysAgo)
+                ->select(DB::raw('DATE(lesson_date) as date'), DB::raw('COUNT(*) as count'))
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get()
+                ->pluck('count', 'date');
 
-        // Plans by Subject
-        $plansBySubject = (clone $baseQuery)
-            ->join('subjects', 'lesson_plans.subject_id', '=', 'subjects.id')
-            ->select('subjects.name_en as subject_name', DB::raw('COUNT(*) as count'))
-            ->groupBy('subjects.name_en')
-            ->orderByDesc('count')
-            ->limit(6)
-            ->get();
+            $trendDates = [];
+            $trendCounts = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $d = Carbon::today()->subDays($i)->format('Y-m-d');
+                $trendDates[] = Carbon::parse($d)->format('M d');
+                $trendCounts[] = (int)($dailySubmissions[$d] ?? 0);
+            }
 
-        // Recent 5 Lesson Plans
-        $recentPlans = (clone $baseQuery)
-            ->with(['teacher', 'schoolClass', 'subject'])
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
+            // Plans by Subject
+            $plansBySubject = (clone $baseQuery)
+                ->join('subjects', 'lesson_plans.subject_id', '=', 'subjects.id')
+                ->select('subjects.name_en as subject_name', DB::raw('COUNT(*) as count'))
+                ->groupBy('subjects.name_en')
+                ->orderByDesc('count')
+                ->limit(6)
+                ->get();
 
-        // Institutional summary for admins
-        $adminOverview = null;
-        if (!$isTeacher) {
-            $adminOverview = [
-                'total_teachers' => User::whereHas('roles', fn($q) => $q->where('name', 'teacher'))->count(),
-                'total_classes' => SchoolClass::count(),
-                'total_subjects' => Subject::count(),
-                'active_year' => AcademicYear::where('is_current', true)->first()?->name ?? '2026',
-            ];
-        }
+            // Recent 5 Lesson Plans
+            $recentPlans = (clone $baseQuery)
+                ->with(['teacher.department', 'schoolClass', 'subject'])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
 
-        return response()->json([
-            'status' => 'success',
-            'data' => [
+            // Institutional summary for admins
+            $adminOverview = null;
+            if (!$isTeacher) {
+                $adminOverview = [
+                    'total_teachers' => User::whereHas('roles', fn($q) => $q->where('name', 'teacher'))->count(),
+                    'total_classes' => SchoolClass::count(),
+                    'total_subjects' => Subject::count(),
+                    'active_year' => AcademicYear::where('is_current', true)->first()?->name ?? '2026',
+                ];
+            }
+
+            return [
                 'summary' => [
-                    'total' => $totalPlans,
-                    'draft' => $draftPlans,
-                    'submitted' => $submittedPlans,
-                    'under_review' => $underReviewPlans,
-                    'approved' => $approvedPlans,
-                    'returned' => $returnedPlans,
-                    'rejected' => $rejectedPlans,
+                    'total' => (int)($agg->total ?? 0),
+                    'draft' => (int)($agg->draft ?? 0),
+                    'submitted' => (int)($agg->submitted ?? 0),
+                    'under_review' => (int)($agg->under_review ?? 0),
+                    'approved' => (int)($agg->approved ?? 0),
+                    'returned' => (int)($agg->returned ?? 0),
+                    'rejected' => (int)($agg->rejected ?? 0),
                 ],
                 'submission_trends' => [
                     'labels' => $trendDates,
@@ -102,7 +109,12 @@ class DashboardController extends Controller
                 'plans_by_subject' => $plansBySubject,
                 'recent_plans' => $recentPlans,
                 'admin_overview' => $adminOverview,
-            ],
+            ];
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $data,
         ]);
     }
 }
