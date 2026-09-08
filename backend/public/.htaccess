@@ -69,9 +69,8 @@
     ExpiresByType application/font-woff "access plus 1 year"
 </IfModule>
 
-# 3. HTTP Security & Connection Optimization Headers
+# 3. HTTP Security & Browser Caching Headers
 <IfModule mod_headers.c>
-    Header set Connection keep-alive
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "SAMEORIGIN"
     Header always set X-XSS-Protection "1; mode=block"
