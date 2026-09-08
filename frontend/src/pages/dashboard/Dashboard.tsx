@@ -51,11 +51,13 @@ export const Dashboard: React.FC = () => {
   const loadStats = async () => {
     try {
       const [res, noticesRes] = await Promise.all([
-        dashboardApi.getStats(),
-        noticeApi.getNotices({ per_page: 5 }).catch(() => ({ data: [] })),
+        dashboardApi.getStats().catch(() => null),
+        noticeApi.getNotices({ per_page: 5 }).catch(() => null),
       ]);
-      setStats(res.data);
-      if (noticesRes && 'data' in noticesRes) {
+      if (res && res.data) {
+        setStats(res.data);
+      }
+      if (noticesRes && 'data' in noticesRes && Array.isArray(noticesRes.data)) {
         setLatestNotices(noticesRes.data);
       }
     } catch (err) {
@@ -68,15 +70,20 @@ export const Dashboard: React.FC = () => {
   const isTeacher = user?.role_names?.includes('teacher') && !user?.role_names?.some((r) => ['super_admin', 'principal', 'academic_coordinator'].includes(r));
 
   if (loading) {
-    return <div className="p-4 text-center">Loading dashboard insights...</div>;
+    return (
+      <div className="p-5 text-center">
+        <div className="spinner-border text-primary mb-2" role="status" />
+        <div className="text-muted small">Loading dashboard insights...</div>
+      </div>
+    );
   }
 
   const barData = {
-    labels: stats?.submission_trends.labels || [],
+    labels: stats?.submission_trends?.labels || ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     datasets: [
       {
         label: 'Lesson Plans Prepared',
-        data: stats?.submission_trends.data || [],
+        data: stats?.submission_trends?.data || [0, 0, 0, 0, 0, 0, 0],
         backgroundColor: '#0f2e5a',
         borderRadius: 4,
       },
@@ -88,11 +95,11 @@ export const Dashboard: React.FC = () => {
     datasets: [
       {
         data: [
-          stats?.summary.approved || 0,
-          stats?.summary.submitted || 0,
-          stats?.summary.draft || 0,
-          stats?.summary.returned || 0,
-          stats?.summary.rejected || 0,
+          stats?.summary?.approved || 0,
+          stats?.summary?.submitted || 0,
+          stats?.summary?.draft || 0,
+          stats?.summary?.returned || 0,
+          stats?.summary?.rejected || 0,
         ],
         backgroundColor: ['#10b981', '#3b82f6', '#94a3b8', '#f59e0b', '#ef4444'],
         borderWidth: 1,
