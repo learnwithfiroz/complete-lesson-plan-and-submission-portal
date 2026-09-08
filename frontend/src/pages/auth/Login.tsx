@@ -284,9 +284,16 @@ export const Login: React.FC = () => {
               </Card.Body>
             </Card>
 
-            <div className="text-center mt-3 text-white-50 fs-8 d-flex align-items-center justify-content-center gap-1">
-              <ShieldCheck size={14} />
-              <span>Official Campus E-Portal | 256-Bit SSL Encrypted System</span>
+            <div className="text-center mt-3 text-white-50 fs-8 d-flex flex-column align-items-center gap-1">
+              <div className="d-flex align-items-center gap-1">
+                <ShieldCheck size={14} />
+                <span>Official Campus E-Portal | 256-Bit SSL Encrypted System</span>
+              </div>
+              <div className="mt-1">
+                <Link to="/setup" className="text-white-50 text-decoration-underline fs-8">
+                  ⚙️ সিস্টেম ও ডাটাবেস অটো-সেটআপ অ্যাসিস্ট্যান্ট (Setup Assistant)
+                </Link>
+              </div>
             </div>
 
           </Col>

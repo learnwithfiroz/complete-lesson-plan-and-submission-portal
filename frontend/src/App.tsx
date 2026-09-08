@@ -4,13 +4,15 @@ import { I18nProvider } from './locales/i18n';
 import { AppLayout } from './components/layout/AppLayout';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
-// Auth Pages
+// Auth & Setup Pages
 import { Login } from './pages/auth/Login';
 import { ForgotPassword } from './pages/auth/ForgotPassword';
 import { ResetPassword } from './pages/auth/ResetPassword';
+import { SystemSetup } from './pages/setup/SystemSetup';
 import { Profile } from './pages/profile/Profile';
 
 // Dashboard, Lesson Plans & Features
+
 import { Dashboard } from './pages/dashboard/Dashboard';
 import { LessonPlanList } from './pages/lesson-plans/LessonPlanList';
 import { CreateLessonPlan } from './pages/lesson-plans/CreateLessonPlan';
@@ -39,10 +41,12 @@ export const App: React.FC = () => {
     <I18nProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public Authentication Routes */}
+          {/* Public Authentication & Setup Routes */}
           <Route path="/login" element={<Login />} />
+          <Route path="/setup" element={<SystemSetup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+
 
           {/* Authenticated Application Routes */}
           <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
