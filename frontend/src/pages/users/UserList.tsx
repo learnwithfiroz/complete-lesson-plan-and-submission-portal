@@ -114,7 +114,7 @@ export const UserList: React.FC = () => {
 
   return (
     <div className="user-list-container">
-      <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3 mb-4">
+      <div className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center justify-content-between gap-3 mb-3">
         <div>
           <h2 className="fs-5 fw-bold text-dark mb-1">
             শিক্ষক ও কর্মী তালিকা (Faculty & Staff Management)
@@ -126,7 +126,7 @@ export const UserList: React.FC = () => {
 
         <Button
           variant="primary"
-          className="d-flex align-items-center gap-2 rounded-3 fw-bold btn-institutional px-3 py-2 shadow-sm"
+          className="d-flex align-items-center justify-content-center gap-2 rounded-3 fw-bold btn-institutional px-3 py-2 shadow-sm text-nowrap"
           onClick={handleOpenCreate}
         >
           <UserPlus size={18} />
@@ -135,11 +135,11 @@ export const UserList: React.FC = () => {
       </div>
 
       {/* Role Group Category Pills (All, Teachers, Leadership, Staff, Support) */}
-      <div className="d-flex align-items-center gap-2 overflow-x-auto pb-2 mb-3">
+      <div className="d-flex align-items-center gap-2 overflow-x-auto text-nowrap pb-2 mb-3">
         <Button
           variant={!filters.role_group ? 'dark' : 'outline-secondary'}
           size="sm"
-          className="rounded-pill px-3 d-flex align-items-center gap-1.5 shadow-xs fw-semibold"
+          className="rounded-pill px-3 d-flex align-items-center gap-1.5 shadow-xs fw-semibold flex-shrink-0"
           onClick={() => handleFilterChange('role_group', '')}
         >
           <Users size={15} /> 👥 সকল কর্মী {counts?.all !== undefined ? `(${counts.all})` : ''}
@@ -148,7 +148,7 @@ export const UserList: React.FC = () => {
         <Button
           variant={filters.role_group === 'teachers' ? 'success' : 'outline-secondary'}
           size="sm"
-          className="rounded-pill px-3 d-flex align-items-center gap-1.5 shadow-xs fw-semibold"
+          className="rounded-pill px-3 d-flex align-items-center gap-1.5 shadow-xs fw-semibold flex-shrink-0"
           onClick={() => handleFilterChange('role_group', 'teachers')}
         >
           <GraduationCap size={15} /> 👨‍🏫 শিক্ষকবৃন্দ {counts?.teachers !== undefined ? `(${counts.teachers})` : ''}
@@ -157,7 +157,7 @@ export const UserList: React.FC = () => {
         <Button
           variant={filters.role_group === 'leadership' ? 'primary' : 'outline-secondary'}
           size="sm"
-          className="rounded-pill px-3 d-flex align-items-center gap-1.5 shadow-xs fw-semibold"
+          className="rounded-pill px-3 d-flex align-items-center gap-1.5 shadow-xs fw-semibold flex-shrink-0"
           onClick={() => handleFilterChange('role_group', 'leadership')}
         >
           🎓 অধ্যক্ষ ও উপাধ্যক্ষ {counts?.leadership !== undefined ? `(${counts.leadership})` : ''}
@@ -166,7 +166,7 @@ export const UserList: React.FC = () => {
         <Button
           variant={filters.role_group === 'staff' ? 'info' : 'outline-secondary'}
           size="sm"
-          className="rounded-pill px-3 d-flex align-items-center gap-1.5 shadow-xs fw-semibold text-dark"
+          className="rounded-pill px-3 d-flex align-items-center gap-1.5 shadow-xs fw-semibold text-dark flex-shrink-0"
           onClick={() => handleFilterChange('role_group', 'staff')}
         >
           <Briefcase size={15} /> 🏢 কর্মকর্তা ও অফিস {counts?.staff !== undefined ? `(${counts.staff})` : ''}
@@ -175,7 +175,7 @@ export const UserList: React.FC = () => {
         <Button
           variant={filters.role_group === 'support' ? 'warning' : 'outline-secondary'}
           size="sm"
-          className="rounded-pill px-3 d-flex align-items-center gap-1.5 shadow-xs fw-semibold text-dark"
+          className="rounded-pill px-3 d-flex align-items-center gap-1.5 shadow-xs fw-semibold text-dark flex-shrink-0"
           onClick={() => handleFilterChange('role_group', 'support')}
         >
           <Wrench size={15} /> 🛠️ সহায়ক কর্মী ও এটেনডেন্ট {counts?.support !== undefined ? `(${counts.support})` : ''}
@@ -185,7 +185,7 @@ export const UserList: React.FC = () => {
       <Card className="border-0 shadow-sm rounded-4 mb-4">
         <Card.Body className="p-3">
           <Row className="g-2 align-items-center">
-            <Col lg={4} md={6}>
+            <Col xs={12} md={6} lg={4}>
               <SearchInput
                 value={filters.search || ''}
                 onChange={(val) => handleFilterChange('search', val)}
@@ -193,14 +193,14 @@ export const UserList: React.FC = () => {
               />
             </Col>
 
-            <Col lg={3} md={3}>
+            <Col xs={12} sm={6} md={3} lg={3}>
               <Form.Select
                 size="sm"
                 value={filters.role || ''}
                 onChange={(e) => handleFilterChange('role', e.target.value)}
                 className="fs-7"
               >
-                <option value="">-- সুনির্দিষ্ট রোল (Specific Role) --</option>
+                <option value="">-- সুনির্দিষ্ট রোল (Role) --</option>
                 {rolesData?.data?.map((r) => (
                   <option key={r.id} value={r.name}>
                     {r.display_name_bn}
@@ -209,7 +209,7 @@ export const UserList: React.FC = () => {
               </Form.Select>
             </Col>
 
-            <Col lg={2} md={3}>
+            <Col xs={12} sm={6} md={3} lg={2}>
               <Form.Select
                 size="sm"
                 value={filters.department_id ? String(filters.department_id) : ''}
@@ -225,7 +225,7 @@ export const UserList: React.FC = () => {
               </Form.Select>
             </Col>
 
-            <Col lg={2} md={3}>
+            <Col xs={6} sm={6} md={6} lg={2}>
               <Form.Select
                 size="sm"
                 value={filters.is_active !== undefined ? String(filters.is_active) : ''}
@@ -238,7 +238,7 @@ export const UserList: React.FC = () => {
               </Form.Select>
             </Col>
 
-            <Col lg={1} md={12} className="text-end">
+            <Col xs={6} sm={6} md={6} lg={1} className="text-end">
               <Button
                 variant="outline-secondary"
                 size="sm"
@@ -253,56 +253,208 @@ export const UserList: React.FC = () => {
         </Card.Body>
       </Card>
 
-      <Card className="border-0 shadow-sm rounded-4 overflow-hidden">
+      <Card className="border-0 shadow-sm rounded-4 overflow-hidden mb-4">
         <Card.Body className="p-0">
           {isLoading ? (
             <LoadingSpinner message="ব্যবহারকারীদের তালিকা লোড হচ্ছে..." />
           ) : (
-            <div className="table-responsive">
-              <Table hover className="align-middle mb-0 fs-7">
-                <thead className="table-light">
-                  <tr>
-                    <th className="ps-3 text-center" style={{ width: '70px' }}>SL</th>
-                    <th style={{ width: '100px' }}>EMP ID</th>
-                    <th>নাম, সম্বোধন ও পদবি</th>
-                    <th>যোগাযোগ ও লগইন তথ্য (Phone = Password)</th>
-                    <th>বিভাগ</th>
-                    <th>ভূমিকা (Role)</th>
-                    <th>স্ট্যাটাস</th>
-                    <th className="text-end pe-4">অ্যাকশন</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {usersData?.data && usersData.data.length > 0 ? (
-                    usersData.data.map((u) => (
-                      <tr key={u.id}>
-                        <td className="ps-3 text-center">
-                          {u.serial_number !== undefined && u.serial_number !== null ? (
-                            <span className="badge bg-light text-dark border fw-bold font-monospace px-2 py-1 fs-8">
-                              {u.serial_number}
-                            </span>
-                          ) : (
-                            <span className="text-muted fs-8">-</span>
-                          )}
-                        </td>
+            <>
+              {/* Desktop & Tablet Table View (Hidden on Mobile) */}
+              <div className="table-responsive d-none d-md-block">
+                <Table hover className="align-middle mb-0 fs-7">
+                  <thead className="table-light">
+                    <tr>
+                      <th className="ps-3 text-center" style={{ width: '70px' }}>SL</th>
+                      <th style={{ width: '100px' }}>EMP ID</th>
+                      <th>নাম, সম্বোধন ও পদবি</th>
+                      <th>যোগাযোগ ও লগইন তথ্য (Phone = Password)</th>
+                      <th>বিভাগ</th>
+                      <th>ভূমিকা (Role)</th>
+                      <th>স্ট্যাটাস</th>
+                      <th className="text-end pe-4">অ্যাকশন</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usersData?.data && usersData.data.length > 0 ? (
+                      usersData.data.map((u) => (
+                        <tr key={u.id}>
+                          <td className="ps-3 text-center">
+                            {u.serial_number !== undefined && u.serial_number !== null ? (
+                              <span className="badge bg-light text-dark border fw-bold font-monospace px-2 py-1 fs-8">
+                                {u.serial_number}
+                              </span>
+                            ) : (
+                              <span className="text-muted fs-8">-</span>
+                            )}
+                          </td>
 
-                        <td>
-                          {u.employee_id ? (
-                            <span className="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-2 py-1 fs-8">
-                              {u.employee_id}
-                            </span>
-                          ) : (
-                            <span className="text-muted fs-8">-</span>
-                          )}
-                        </td>
+                          <td>
+                            {u.employee_id ? (
+                              <span className="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-2 py-1 fs-8">
+                                {u.employee_id}
+                              </span>
+                            ) : (
+                              <span className="text-muted fs-8">-</span>
+                            )}
+                          </td>
 
-                        <td>
-                          <div className="d-flex align-items-center gap-2.5">
+                          <td>
+                            <div className="d-flex align-items-center gap-2.5">
+                              <div className={`avatar-circle ${u.gender === 'Female' ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary'} fw-bold`}>
+                                {u.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                                  {u.salutation && (
+                                    <Badge
+                                      bg={u.salutation.toLowerCase().includes('madam') ? 'danger' : 'primary'}
+                                      className="fs-9 fw-bold px-1.5 py-0.5"
+                                    >
+                                      {u.salutation}
+                                    </Badge>
+                                  )}
+                                  <span className="fw-bold text-dark">{u.name}</span>
+                                  {u.gender && (
+                                    <Badge bg="light" className="text-muted border fs-9 px-1">
+                                      {u.gender === 'Female' ? '♀ Female' : '♂ Male'}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <small className="text-secondary fw-medium d-block mt-0.5">
+                                  {u.designation || 'Faculty Member'}
+                                </small>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td>
+                            <div className="font-monospace text-dark fs-8">{u.email}</div>
+                            {u.phone ? (
+                              <div className="d-flex align-items-center gap-1 mt-1">
+                                <span className="font-monospace text-primary fw-semibold fs-8">
+                                  📱 {u.phone}
+                                </span>
+                                <Button
+                                  variant="outline-secondary"
+                                  size="sm"
+                                  className="py-0 px-1 fs-9 d-inline-flex align-items-center gap-1 text-muted"
+                                  title="লগইন পাসওয়ার্ড (ফোন নম্বর) কপি করুন"
+                                  onClick={() => copyPhonePassword(u)}
+                                >
+                                  {copiedId === u.id ? <Check size={11} className="text-success" /> : <Copy size={11} />}
+                                  <span>{copiedId === u.id ? 'কপি হয়েছে' : 'কপি পাস'}</span>
+                                </Button>
+                              </div>
+                            ) : (
+                              <small className="text-muted">ফোন নম্বর নেই</small>
+                            )}
+                          </td>
+
+                          <td>
+                            {u.department ? (
+                              <span className="badge bg-light text-dark border fw-medium">
+                                {u.department.name_bn}
+                              </span>
+                            ) : (
+                              <span className="text-muted fs-8">সাধারণ / প্রশাসন</span>
+                            )}
+                          </td>
+
+                          <td>
+                            <div className="d-flex flex-wrap gap-1">
+                              {u.roles.map((r) => (
+                                <Badge
+                                  key={r.id}
+                                  bg={
+                                    r.name === 'super_admin'
+                                      ? 'danger'
+                                      : r.name === 'principal'
+                                      ? 'primary'
+                                      : r.name === 'academic_coordinator'
+                                      ? 'info'
+                                      : r.name === 'teacher'
+                                      ? 'success'
+                                      : r.name === 'staff'
+                                      ? 'secondary'
+                                      : 'warning'
+                                  }
+                                  className="fw-medium px-2 py-1"
+                                >
+                                  {r.display_name_bn}
+                                </Badge>
+                              ))}
+                            </div>
+                          </td>
+
+                          <td>
+                            <Badge
+                              bg={u.is_active ? 'success' : 'secondary'}
+                              className="fw-semibold px-2 py-1"
+                            >
+                              {u.is_active ? 'সক্রিয় (Active)' : 'নিষ্ক্রিয়'}
+                            </Badge>
+                          </td>
+
+                          <td className="text-end pe-4">
+                            <div className="d-inline-flex align-items-center gap-1">
+                              <Button
+                                variant="outline-primary"
+                                size="sm"
+                                className="p-1 px-2 fs-8"
+                                title="সম্পাদনা করুন"
+                                onClick={() => handleOpenEdit(u)}
+                              >
+                                <Edit2 size={14} />
+                              </Button>
+
+                              <Button
+                                variant={u.is_active ? 'outline-warning' : 'outline-success'}
+                                size="sm"
+                                className="p-1 px-2 fs-8"
+                                title={u.is_active ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}
+                                onClick={() => toggleStatusMutation.mutate(u.id)}
+                              >
+                                <Power size={14} />
+                              </Button>
+
+                              <Button
+                                variant="outline-danger"
+                                size="sm"
+                                className="p-1 px-2 fs-8"
+                                title="মুছে ফেলুন"
+                                onClick={() => setDeleteConfirm({ show: true, user: u })}
+                              >
+                                <Trash2 size={14} />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={8} className="text-center py-5 text-muted">
+                          কোন ব্যবহারকারী পাওয়া যায়নি।
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </Table>
+              </div>
+
+              {/* Mobile Card List View (Visible on Mobile Only) */}
+              <div className="d-md-none p-2 d-flex flex-column gap-2.5">
+                {usersData?.data && usersData.data.length > 0 ? (
+                  usersData.data.map((u) => (
+                    <Card key={u.id} className="border border-light-subtle shadow-xs rounded-3 overflow-hidden">
+                      <Card.Body className="p-3">
+                        {/* Card Header: Avatar, Name, Gender, Status */}
+                        <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                          <div className="d-flex align-items-center gap-2">
                             <div className={`avatar-circle ${u.gender === 'Female' ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary'} fw-bold`}>
                               {u.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <div className="d-flex align-items-center gap-1.5">
+                              <div className="d-flex align-items-center gap-1 flex-wrap">
                                 {u.salutation && (
                                   <Badge
                                     bg={u.salutation.toLowerCase().includes('madam') ? 'danger' : 'primary'}
@@ -311,133 +463,124 @@ export const UserList: React.FC = () => {
                                     {u.salutation}
                                   </Badge>
                                 )}
-                                <span className="fw-bold text-dark">{u.name}</span>
-                                {u.gender && (
-                                  <Badge bg="light" className="text-muted border fs-9 px-1">
-                                    {u.gender === 'Female' ? '♀ Female' : '♂ Male'}
-                                  </Badge>
+                                <span className="fw-bold text-dark fs-7">{u.name}</span>
+                              </div>
+                              <div className="d-flex align-items-center gap-1 text-secondary fs-8 mt-0.5">
+                                <span>{u.designation || 'Faculty Member'}</span>
+                                {u.department && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-primary fw-medium">{u.department.name_bn}</span>
+                                  </>
                                 )}
                               </div>
-                              <small className="text-secondary fw-medium d-block mt-0.5">
-                                {u.designation || 'Faculty Member'}
-                              </small>
                             </div>
                           </div>
-                        </td>
 
-                        <td>
-                          <div className="font-monospace text-dark fs-8">{u.email}</div>
+                          <div className="d-flex flex-column align-items-end gap-1">
+                            {u.serial_number !== undefined && u.serial_number !== null ? (
+                              <span className="badge bg-light text-dark border font-monospace fs-9">
+                                #{u.serial_number}
+                              </span>
+                            ) : null}
+                            <Badge bg={u.is_active ? 'success' : 'secondary'} className="fs-9 px-1.5 py-0.5">
+                              {u.is_active ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Contact & Password details */}
+                        <div className="bg-light p-2 rounded-2 mb-2 fs-8">
+                          <div className="text-muted text-truncate mb-1">
+                            ✉️ <span className="font-monospace text-dark">{u.email}</span>
+                          </div>
                           {u.phone ? (
-                            <div className="d-flex align-items-center gap-1 mt-1">
-                              <span className="font-monospace text-primary fw-semibold fs-8">
+                            <div className="d-flex align-items-center justify-content-between gap-1">
+                              <span className="font-monospace text-primary fw-bold">
                                 📱 {u.phone}
                               </span>
                               <Button
-                                variant="outline-secondary"
+                                variant="outline-primary"
                                 size="sm"
-                                className="py-0 px-1 fs-9 d-inline-flex align-items-center gap-1 text-muted"
-                                title="লগইন পাসওয়ার্ড (ফোন নম্বর) কপি করুন"
+                                className="py-0 px-2 fs-9 d-inline-flex align-items-center gap-1"
                                 onClick={() => copyPhonePassword(u)}
                               >
                                 {copiedId === u.id ? <Check size={11} className="text-success" /> : <Copy size={11} />}
-                                <span>{copiedId === u.id ? 'কপি হয়েছে' : 'কপি পাস'}</span>
+                                <span>{copiedId === u.id ? 'কপি হয়েছে' : 'পাসওয়ার্ড কপি'}</span>
                               </Button>
                             </div>
                           ) : (
-                            <small className="text-muted">ফোন নম্বর নেই</small>
+                            <span className="text-muted fs-9">ফোন নম্বর নেই</span>
                           )}
-                        </td>
+                        </div>
 
-                        <td>
-                          {u.department ? (
-                            <span className="badge bg-light text-dark border fw-medium">
-                              {u.department.name_bn}
-                            </span>
-                          ) : (
-                            <span className="text-muted fs-8">সাধারণ / প্রশাসন</span>
-                          )}
-                        </td>
+                        {/* Roles */}
+                        <div className="d-flex flex-wrap gap-1 mb-3">
+                          {u.roles.map((r) => (
+                            <Badge
+                              key={r.id}
+                              bg={
+                                r.name === 'super_admin'
+                                  ? 'danger'
+                                  : r.name === 'principal'
+                                  ? 'primary'
+                                  : r.name === 'academic_coordinator'
+                                  ? 'info'
+                                  : r.name === 'teacher'
+                                  ? 'success'
+                                  : r.name === 'staff'
+                                  ? 'secondary'
+                                  : 'warning'
+                              }
+                              className="fw-medium fs-9 px-2 py-0.5"
+                            >
+                              {r.display_name_bn}
+                            </Badge>
+                          ))}
+                        </div>
 
-                        <td>
-                          <div className="d-flex flex-wrap gap-1">
-                            {u.roles.map((r) => (
-                              <Badge
-                                key={r.id}
-                                bg={
-                                  r.name === 'super_admin'
-                                    ? 'danger'
-                                    : r.name === 'principal'
-                                    ? 'primary'
-                                    : r.name === 'academic_coordinator'
-                                    ? 'info'
-                                    : r.name === 'teacher'
-                                    ? 'success'
-                                    : r.name === 'staff'
-                                    ? 'secondary'
-                                    : 'warning'
-                                }
-                                className="fw-medium px-2 py-1"
-                              >
-                                {r.display_name_bn}
-                              </Badge>
-                            ))}
-                          </div>
-                        </td>
-
-                        <td>
-                          <Badge
-                            bg={u.is_active ? 'success' : 'secondary'}
-                            className="fw-semibold px-2 py-1"
+                        {/* Mobile Action Buttons */}
+                        <div className="d-grid grid-cols-3 gap-1 pt-2 border-top" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            className="fs-8 py-1.5 d-flex align-items-center justify-content-center gap-1 rounded-2"
+                            onClick={() => handleOpenEdit(u)}
                           >
-                            {u.is_active ? 'সক্রিয় (Active)' : 'নিষ্ক্রিয়'}
-                          </Badge>
-                        </td>
+                            <Edit2 size={13} />
+                            <span>এডিট</span>
+                          </Button>
 
-                        <td className="text-end pe-4">
-                          <div className="d-inline-flex align-items-center gap-1">
-                            <Button
-                              variant="outline-primary"
-                              size="sm"
-                              className="p-1 px-2 fs-8"
-                              title="সম্পাদনা করুন"
-                              onClick={() => handleOpenEdit(u)}
-                            >
-                              <Edit2 size={14} />
-                            </Button>
+                          <Button
+                            variant={u.is_active ? 'outline-warning' : 'outline-success'}
+                            size="sm"
+                            className="fs-8 py-1.5 d-flex align-items-center justify-content-center gap-1 rounded-2"
+                            onClick={() => toggleStatusMutation.mutate(u.id)}
+                          >
+                            <Power size={13} />
+                            <span>{u.is_active ? 'বন্ধ করুন' : 'সক্রিয়'}</span>
+                          </Button>
 
-                            <Button
-                              variant={u.is_active ? 'outline-warning' : 'outline-success'}
-                              size="sm"
-                              className="p-1 px-2 fs-8"
-                              title={u.is_active ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}
-                              onClick={() => toggleStatusMutation.mutate(u.id)}
-                            >
-                              <Power size={14} />
-                            </Button>
-
-                            <Button
-                              variant="outline-danger"
-                              size="sm"
-                              className="p-1 px-2 fs-8"
-                              title="মুছে ফেলুন"
-                              onClick={() => setDeleteConfirm({ show: true, user: u })}
-                            >
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={8} className="text-center py-5 text-muted">
-                        কোন ব্যবহারকারী পাওয়া যায়নি।
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </Table>
-            </div>
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            className="fs-8 py-1.5 d-flex align-items-center justify-content-center gap-1 rounded-2"
+                            onClick={() => setDeleteConfirm({ show: true, user: u })}
+                          >
+                            <Trash2 size={13} />
+                            <span>মুছুন</span>
+                          </Button>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="text-center py-5 text-muted fs-7">
+                    কোন ব্যবহারকারী পাওয়া যায়নি।
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </Card.Body>
 

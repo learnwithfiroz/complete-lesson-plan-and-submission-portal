@@ -161,21 +161,21 @@ export const UserModal: React.FC<UserModalProps> = ({
         <Modal.Body className="p-4">
           <Row className="g-3">
 
-            <Col md={3}>
+            <Col xs={6} md={3}>
               <Form.Group controlId="serial_number">
                 <Form.Label className="fw-semibold fs-7 text-secondary">
                   ক্রমিক নং (SL Order)
                 </Form.Label>
                 <Form.Control
                   type="number"
-                  placeholder="যেমন: 1, 2, 3..."
+                  placeholder="যেমন: 1, 2..."
                   className="fs-7 fw-bold"
                   {...register('serial_number')}
                 />
               </Form.Group>
             </Col>
 
-            <Col md={3}>
+            <Col xs={6} md={3}>
               <Form.Group controlId="employee_id">
                 <Form.Label className="fw-semibold fs-7 text-secondary">
                   এমপ্লয়ী আইডি (EMP ID)
@@ -189,7 +189,7 @@ export const UserModal: React.FC<UserModalProps> = ({
               </Form.Group>
             </Col>
 
-            <Col md={3}>
+            <Col xs={6} md={3}>
               <Form.Group controlId="salutation">
                 <Form.Label className="fw-semibold fs-7 text-secondary">
                   সম্বোধন (Salutation)
@@ -205,7 +205,7 @@ export const UserModal: React.FC<UserModalProps> = ({
               </Form.Group>
             </Col>
 
-            <Col md={3}>
+            <Col xs={6} md={3}>
               <Form.Group controlId="gender">
                 <Form.Label className="fw-semibold fs-7 text-secondary">
                   লিঙ্গ (Gender)
@@ -218,7 +218,7 @@ export const UserModal: React.FC<UserModalProps> = ({
               </Form.Group>
             </Col>
 
-            <Col md={6}>
+            <Col xs={12} md={6}>
               <Form.Group controlId="name">
                 <Form.Label className="fw-semibold fs-7 text-secondary">
                   পূর্ণ নাম (Full Name) <span className="text-danger">*</span>
@@ -237,7 +237,7 @@ export const UserModal: React.FC<UserModalProps> = ({
               </Form.Group>
             </Col>
 
-            <Col md={6}>
+            <Col xs={12} md={6}>
               <Form.Group controlId="email">
                 <Form.Label className="fw-semibold fs-7 text-secondary">
                   ইমেইল ঠিকানা (Email) <span className="text-danger">*</span>
@@ -256,7 +256,7 @@ export const UserModal: React.FC<UserModalProps> = ({
               </Form.Group>
             </Col>
 
-            <Col md={6}>
+            <Col xs={12} md={6}>
               <Form.Group controlId="phone">
                 <Form.Label className="fw-semibold fs-7 text-secondary">
                   ফোন নম্বর (Phone)
@@ -270,7 +270,7 @@ export const UserModal: React.FC<UserModalProps> = ({
               </Form.Group>
             </Col>
 
-            <Col md={6}>
+            <Col xs={12} md={6}>
               <Form.Group controlId="designation">
                 <Form.Label className="fw-semibold fs-7 text-secondary">
                   পদবি (Designation)
@@ -284,7 +284,7 @@ export const UserModal: React.FC<UserModalProps> = ({
               </Form.Group>
             </Col>
 
-            <Col md={6}>
+            <Col xs={12} md={6}>
               <Form.Group controlId="department_id">
                 <Form.Label className="fw-semibold fs-7 text-secondary">
                   বিভাগ (Department)
@@ -300,7 +300,7 @@ export const UserModal: React.FC<UserModalProps> = ({
               </Form.Group>
             </Col>
 
-            <Col md={6}>
+            <Col xs={12} md={6}>
               <Form.Group controlId="password">
                 <Form.Label className="fw-semibold fs-7 text-secondary">
                   পাসওয়ার্ড {isEditing ? '(পরিবর্তন করতে চাইলে লিখুন)' : <span className="text-danger">*</span>}
