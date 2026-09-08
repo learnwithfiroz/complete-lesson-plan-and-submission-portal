@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
@@ -48,7 +49,7 @@ jobs:
           protocol: ${{ secrets.FTP_PROTOCOL || 'ftp' }}
           port: ${{ secrets.FTP_PORT || 21 }}
           local-dir: ./
-          server-dir: public_html/
+          server-dir: ${{ secrets.FTP_DIR || 'lessonplan.firoz-ahmed.com/' }}
           exclude: |
             **/.git*
             storage/logs/*.log
