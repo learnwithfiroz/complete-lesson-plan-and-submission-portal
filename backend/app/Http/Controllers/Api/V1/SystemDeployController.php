@@ -132,6 +132,19 @@ class SystemDeployController extends Controller
                 $outputs[] = 'Storage link skipped: ' . $e->getMessage();
             }
 
+            if ($action === 'git_pull') {
+                $gitOutput = [];
+                if (function_exists('exec')) {
+                    @exec('git pull origin main 2>&1', $gitOutput);
+                    $outputs[] = 'Git pull: ' . implode("\n", $gitOutput);
+                } elseif (function_exists('shell_exec')) {
+                    $res = @shell_exec('git pull origin main 2>&1');
+                    $outputs[] = 'Git pull (shell_exec): ' . $res;
+                } else {
+                    $outputs[] = 'exec and shell_exec are disabled on this PHP environment.';
+                }
+            }
+
             // 3. Clear and optimize caches safely
             try {
                 Artisan::call('optimize:clear');
