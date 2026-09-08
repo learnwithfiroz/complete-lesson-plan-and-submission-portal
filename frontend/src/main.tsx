@@ -9,6 +9,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import './assets/styles/custom.css';
 
 import App from './App';
+import { ErrorBoundary } from './components/feedback/ErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,9 +24,11 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <App />
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <App />
+        <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} />
+      </QueryClientProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );
