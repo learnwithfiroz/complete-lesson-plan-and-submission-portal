@@ -1,0 +1,1 @@
+import{a as e}from"./index-Bwg2Gvyl.js";var t={getRoles:async()=>(await e.get(`/api/v1/roles`)).data,getRole:async t=>(await e.get(`/api/v1/roles/${t}`)).data,updateRolePermissions:async(t,n)=>(await e.put(`/api/v1/roles/${t}/permissions`,{permission_ids:n})).data,getPermissions:async()=>(await e.get(`/api/v1/permissions`)).data};export{t};

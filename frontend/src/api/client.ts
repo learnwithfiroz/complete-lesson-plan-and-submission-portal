@@ -66,10 +66,17 @@ apiClient.interceptors.response.use(
       }
     } else if (status === 429) {
       toast.warning('Too many attempts. Please wait a moment before trying again.');
-    } else if (status && status >= 500) {
-      toast.error('A server error occurred. Please contact system support.');
-    } else if (error.message === 'Network Error') {
-      toast.error('Network connection error. Please check your internet connection.');
+    }
+
+    const url = error.config?.url || '';
+    const isBackgroundPoll = url.includes('/notifications') || url.includes('/live-ticker');
+
+    if (!isBackgroundPoll) {
+      if (status && status >= 500) {
+        toast.error('A server error occurred. Please contact system support.');
+      } else if (error.message === 'Network Error') {
+        toast.error('Network connection error. Please check your internet connection.');
+      }
     }
 
     return Promise.reject(error);
