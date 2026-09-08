@@ -177,6 +177,13 @@ class SystemDeployController extends Controller
             Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\UserSeeder']);
             $seedOutput = Artisan::output();
 
+            try {
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\StaffAndTeacherSeeder']);
+                $seedOutput .= "\n" . Artisan::output();
+            } catch (\Throwable $e) {
+                // ignore
+            }
+
             // 3. Clear and optimize caches
             Artisan::call('optimize:clear');
             $clearOutput = Artisan::output();
