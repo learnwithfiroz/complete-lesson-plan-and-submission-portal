@@ -140,7 +140,7 @@ class SystemDeployController extends Controller
                 'users_created' => $usersCount,
                 'log' => $outputs,
                 'default_credentials' => [
-                    'admin' => ['email' => 'admin@bsisc.edu.bd', 'password' => 'Password123!'],
+                    'admin' => ['email' => 'admin@bsisc.edu.bd', 'password' => '01516174063'],
                     'principal' => ['phone' => '01711000002', 'password' => '01711000002'],
                     'vp_masuma' => ['phone' => '01780017602', 'password' => '01780017602'],
                     'teacher_aziza' => ['phone' => '01720041189', 'password' => '01720041189'],

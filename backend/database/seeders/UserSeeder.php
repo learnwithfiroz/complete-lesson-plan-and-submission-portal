@@ -27,8 +27,8 @@ class UserSeeder extends Seeder
             [
                 'name' => 'System Administrator',
                 'name_bn' => 'সিস্টেম অ্যাডমিনিস্ট্রেটর',
-                'password' => $defaultPassword,
-                'phone' => '01711000001',
+                'password' => Hash::make('01516174063'),
+                'phone' => '01516174063',
                 'designation' => 'Lead Systems Engineer',
                 'is_active' => true,
             ]
