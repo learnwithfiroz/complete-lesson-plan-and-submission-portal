@@ -154,7 +154,7 @@ export const Dashboard: React.FC = () => {
             <Card.Body className="p-3 d-flex justify-content-between align-items-center">
               <div>
                 <span className="text-muted small fw-semibold">Total Plans</span>
-                <h3 className="fw-bold mb-0 text-primary">{stats?.summary.total || 0}</h3>
+                <h3 className="fw-bold mb-0 text-primary">{stats?.summary?.total || 0}</h3>
               </div>
               <div className="p-2 p-md-3 bg-light rounded-circle text-primary">
                 <FileText size={20} />

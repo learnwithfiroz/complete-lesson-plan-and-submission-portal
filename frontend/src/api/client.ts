@@ -7,6 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 15000,
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
@@ -46,6 +47,15 @@ apiClient.interceptors.response.use(
   (error: AxiosError<ApiError>) => {
     const status = error.response?.status;
     const errorData = error.response?.data;
+    const url = error.config?.url || '';
+
+    // Ignore polling / background / public endpoints from intrusive error toasts
+    const isBackgroundPoll =
+      url.includes('/notifications') ||
+      url.includes('/live-ticker') ||
+      url.includes('/notices') ||
+      url.includes('/system/status') ||
+      url.includes('/form-schemas/default');
 
     if (status === 401) {
       localStorage.removeItem('auth_token');
@@ -56,7 +66,9 @@ apiClient.interceptors.response.use(
         window.location.href = '/login';
       }
     } else if (status === 403) {
-      toast.error(errorData?.message || 'Access denied: You lack sufficient permissions.');
+      if (!isBackgroundPoll) {
+        toast.error(errorData?.message || 'Access denied: You lack sufficient permissions.');
+      }
     } else if (status === 422) {
       const firstError = errorData?.errors ? Object.values(errorData.errors)[0]?.[0] : null;
       if (firstError) {
@@ -67,9 +79,6 @@ apiClient.interceptors.response.use(
     } else if (status === 429) {
       toast.warning('Too many attempts. Please wait a moment before trying again.');
     }
-
-    const url = error.config?.url || '';
-    const isBackgroundPoll = url.includes('/notifications') || url.includes('/live-ticker');
 
     if (!isBackgroundPoll) {
       if (status && status >= 500) {

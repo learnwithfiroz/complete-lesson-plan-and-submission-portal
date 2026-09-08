@@ -5,6 +5,8 @@ import { Sidebar } from './Sidebar';
 import { NoticeTicker } from '../common/NoticeTicker';
 import { PwaInstallBanner } from '../common/PwaInstallBanner';
 
+import { ErrorBoundary } from '../feedback/ErrorBoundary';
+
 export const AppLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -21,7 +23,9 @@ export const AppLayout: React.FC = () => {
         
         <main className="portal-content">
           <div className="container-fluid p-3 p-lg-4">
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>
