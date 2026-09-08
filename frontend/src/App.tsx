@@ -5,36 +5,64 @@ import { AppLayout } from './components/layout/AppLayout';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { PageLoader } from './components/feedback/PageLoader';
 
-// Auth & Setup Pages (Lazy Loaded)
-const Login = lazy(() => import('./pages/auth/Login').then(m => ({ default: m.Login })));
-const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
-const ResetPassword = lazy(() => import('./pages/auth/ResetPassword').then(m => ({ default: m.ResetPassword })));
-const SystemSetup = lazy(() => import('./pages/setup/SystemSetup').then(m => ({ default: m.SystemSetup })));
-const Profile = lazy(() => import('./pages/profile/Profile').then(m => ({ default: m.Profile })));
+// Helper for safe lazy-loading with automatic recovery on build updates
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    try {
+      return await factory();
+    } catch (error: any) {
+      console.warn('Chunk load error, auto-reloading to fetch newest version...', error);
+      const isChunkError =
+        error?.message?.includes('dynamically imported module') ||
+        error?.message?.includes('Loading chunk') ||
+        error?.name === 'ChunkLoadError';
 
-// Dashboard, Lesson Plans & Features (Lazy Loaded)
-const Dashboard = lazy(() => import('./pages/dashboard/Dashboard').then(m => ({ default: m.Dashboard })));
-const LessonPlanList = lazy(() => import('./pages/lesson-plans/LessonPlanList').then(m => ({ default: m.LessonPlanList })));
-const CreateLessonPlan = lazy(() => import('./pages/lesson-plans/CreateLessonPlan').then(m => ({ default: m.CreateLessonPlan })));
-const LessonPlanDetails = lazy(() => import('./pages/lesson-plans/LessonPlanDetails').then(m => ({ default: m.LessonPlanDetails })));
-const Templates = lazy(() => import('./pages/templates/Templates').then(m => ({ default: m.Templates })));
-const Reports = lazy(() => import('./pages/reports/Reports').then(m => ({ default: m.Reports })));
-const Notifications = lazy(() => import('./pages/notifications/Notifications').then(m => ({ default: m.Notifications })));
-const LessonPlanCalendar = lazy(() => import('./pages/calendar/LessonPlanCalendar').then(m => ({ default: m.LessonPlanCalendar })));
-const NoticeBoard = lazy(() => import('./pages/notices/NoticeBoard').then(m => ({ default: m.NoticeBoard })));
-const SubmissionTracking = lazy(() => import('./pages/submissions/SubmissionTracking').then(m => ({ default: m.SubmissionTracking })));
-const SubmissionBatchDetails = lazy(() => import('./pages/submissions/SubmissionBatchDetails').then(m => ({ default: m.SubmissionBatchDetails })));
+      if (isChunkError || error) {
+        const lastReload = sessionStorage.getItem('last_chunk_reload');
+        const now = Date.now();
+        if (!lastReload || now - parseInt(lastReload, 10) > 5000) {
+          sessionStorage.setItem('last_chunk_reload', now.toString());
+          window.location.reload();
+          return new Promise<{ default: T }>(() => {});
+        }
+      }
+      throw error;
+    }
+  });
+}
 
-// Academic Management Pages (Lazy Loaded)
-const AcademicYears = lazy(() => import('./pages/academic/AcademicYears').then(m => ({ default: m.AcademicYears })));
-const ClassesSections = lazy(() => import('./pages/academic/ClassesSections').then(m => ({ default: m.ClassesSections })));
-const SubjectsChapters = lazy(() => import('./pages/academic/SubjectsChapters').then(m => ({ default: m.SubjectsChapters })));
-const TeacherAssignments = lazy(() => import('./pages/academic/TeacherAssignments').then(m => ({ default: m.TeacherAssignments })));
-const DepartmentList = lazy(() => import('./pages/departments/DepartmentList').then(m => ({ default: m.DepartmentList })));
+// Auth & Setup Pages (Lazy Loaded with auto-retry)
+const Login = lazyWithRetry(() => import('./pages/auth/Login').then(m => ({ default: m.Login })));
+const ForgotPassword = lazyWithRetry(() => import('./pages/auth/ForgotPassword').then(m => ({ default: m.ForgotPassword })));
+const ResetPassword = lazyWithRetry(() => import('./pages/auth/ResetPassword').then(m => ({ default: m.ResetPassword })));
+const SystemSetup = lazyWithRetry(() => import('./pages/setup/SystemSetup').then(m => ({ default: m.SystemSetup })));
+const Profile = lazyWithRetry(() => import('./pages/profile/Profile').then(m => ({ default: m.Profile })));
 
-// User & RBAC Management (Lazy Loaded)
-const UserList = lazy(() => import('./pages/users/UserList').then(m => ({ default: m.UserList })));
-const RoleList = lazy(() => import('./pages/users/RoleList').then(m => ({ default: m.RoleList })));
+// Dashboard, Lesson Plans & Features (Lazy Loaded with auto-retry)
+const Dashboard = lazyWithRetry(() => import('./pages/dashboard/Dashboard').then(m => ({ default: m.Dashboard })));
+const LessonPlanList = lazyWithRetry(() => import('./pages/lesson-plans/LessonPlanList').then(m => ({ default: m.LessonPlanList })));
+const CreateLessonPlan = lazyWithRetry(() => import('./pages/lesson-plans/CreateLessonPlan').then(m => ({ default: m.CreateLessonPlan })));
+const LessonPlanDetails = lazyWithRetry(() => import('./pages/lesson-plans/LessonPlanDetails').then(m => ({ default: m.LessonPlanDetails })));
+const Templates = lazyWithRetry(() => import('./pages/templates/Templates').then(m => ({ default: m.Templates })));
+const Reports = lazyWithRetry(() => import('./pages/reports/Reports').then(m => ({ default: m.Reports })));
+const Notifications = lazyWithRetry(() => import('./pages/notifications/Notifications').then(m => ({ default: m.Notifications })));
+const LessonPlanCalendar = lazyWithRetry(() => import('./pages/calendar/LessonPlanCalendar').then(m => ({ default: m.LessonPlanCalendar })));
+const NoticeBoard = lazyWithRetry(() => import('./pages/notices/NoticeBoard').then(m => ({ default: m.NoticeBoard })));
+const SubmissionTracking = lazyWithRetry(() => import('./pages/submissions/SubmissionTracking').then(m => ({ default: m.SubmissionTracking })));
+const SubmissionBatchDetails = lazyWithRetry(() => import('./pages/submissions/SubmissionBatchDetails').then(m => ({ default: m.SubmissionBatchDetails })));
+
+// Academic Management Pages (Lazy Loaded with auto-retry)
+const AcademicYears = lazyWithRetry(() => import('./pages/academic/AcademicYears').then(m => ({ default: m.AcademicYears })));
+const ClassesSections = lazyWithRetry(() => import('./pages/academic/ClassesSections').then(m => ({ default: m.ClassesSections })));
+const SubjectsChapters = lazyWithRetry(() => import('./pages/academic/SubjectsChapters').then(m => ({ default: m.SubjectsChapters })));
+const TeacherAssignments = lazyWithRetry(() => import('./pages/academic/TeacherAssignments').then(m => ({ default: m.TeacherAssignments })));
+const DepartmentList = lazyWithRetry(() => import('./pages/departments/DepartmentList').then(m => ({ default: m.DepartmentList })));
+
+// User & RBAC Management (Lazy Loaded with auto-retry)
+const UserList = lazyWithRetry(() => import('./pages/users/UserList').then(m => ({ default: m.UserList })));
+const RoleList = lazyWithRetry(() => import('./pages/users/RoleList').then(m => ({ default: m.RoleList })));
 
 export const App: React.FC = () => {
   return (

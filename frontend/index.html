@@ -68,6 +68,32 @@
         }
       }, { capture: true });
 
+      // Automatically reload page when a new deployment creates new chunk hashes
+      window.addEventListener('vite:preloadError', function (event) {
+        event.preventDefault();
+        var lastReload = sessionStorage.getItem('last_chunk_reload');
+        var now = Date.now();
+        if (!lastReload || now - parseInt(lastReload, 10) > 5000) {
+          sessionStorage.setItem('last_chunk_reload', now.toString());
+          window.location.reload();
+        }
+      });
+
+      window.addEventListener('unhandledrejection', function (event) {
+        if (event.reason && (
+          (event.reason.message && event.reason.message.indexOf('dynamically imported module') !== -1) ||
+          (event.reason.name === 'ChunkLoadError')
+        )) {
+          event.preventDefault();
+          var lastReload = sessionStorage.getItem('last_chunk_reload');
+          var now = Date.now();
+          if (!lastReload || now - parseInt(lastReload, 10) > 5000) {
+            sessionStorage.setItem('last_chunk_reload', now.toString());
+            window.location.reload();
+          }
+        }
+      });
+
       // Clear stale service worker and browser cache to ensure immediate updates
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
