@@ -256,19 +256,34 @@ export const printOfficialSundayReport = (data: SundayReportData) => {
           text-align: center;
           page-break-inside: avoid;
         }
-        .sig-line {
-          border-top: 1px solid #334155;
-          width: 75%;
-          margin: 40px auto 4px auto;
+        .signatures {
+          margin-top: 40px;
+          display: grid;
+          grid-template-columns: 1fr 1fr 1.3fr;
+          gap: 15px;
+          text-align: center;
+          page-break-inside: avoid;
         }
-        .sig-title {
-          font-weight: bold;
+        .sig-line {
+          border-top: 1.5px dotted #94a3b8;
+          width: 85%;
+          margin: 45px auto 6px auto;
+        }
+        .sig-name {
+          font-weight: 700;
           font-size: 11.5px;
           color: #0f172a;
+          margin-bottom: 2px;
+          line-height: 1.3;
         }
         .sig-desig {
-          font-size: 10px;
-          color: #64748b;
+          font-size: 11px;
+          font-weight: 600;
+          color: #334155;
+        }
+        .sig-desig.principal {
+          color: #1e3a8a;
+          font-weight: 700;
         }
         .footer-note {
           margin-top: 20px;
@@ -387,18 +402,18 @@ export const printOfficialSundayReport = (data: SundayReportData) => {
       <div class="signatures">
         <div>
           <div class="sig-line"></div>
-          <div class="sig-title">অ্যাকাডেমিক কো-অর্ডিনেটর</div>
-          <div class="sig-desig">Academic Coordinator, BSISC</div>
+          <div class="sig-name">Aklima Begum</div>
+          <div class="sig-desig">VP (Jr. Div)</div>
         </div>
         <div>
           <div class="sig-line"></div>
-          <div class="sig-title">ভাইস প্রিন্সিপাল</div>
-          <div class="sig-desig">Vice Principal (Sr./Jr. Div), BSISC</div>
+          <div class="sig-name">Masuma Mamataz</div>
+          <div class="sig-desig">VP (Sr. Div)</div>
         </div>
         <div>
           <div class="sig-line"></div>
-          <div class="sig-title">অধ্যক্ষ / প্রিন্সিপাল</div>
-          <div class="sig-desig">Principal, BSISC</div>
+          <div class="sig-name">Brig Gen Akhter Shahid, SUP (BAR), ndc, psc, G+, MPhil (LPR)</div>
+          <div class="sig-desig principal">Principal</div>
         </div>
       </div>
 

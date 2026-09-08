@@ -462,34 +462,33 @@ export const ProfessionalSundayReport: React.FC<Props> = ({ data, onPrint, onOpe
 
       {/* 7. OFFICIAL 3-COLUMN SIGNATURE FOOTER */}
       <div className="report-signatures pt-5 mt-4 border-top">
-        <Row className="text-center g-4">
+        <Row className="text-center g-3 align-items-end">
           <Col xs={4}>
             <div className="signature-box">
-              <div style={{ height: '50px' }}></div>
-              <div className="border-top border-dark mx-auto" style={{ width: '80%', maxWidth: '200px' }}></div>
-              <div className="fw-bold text-dark mt-1 small">অ্যাকাডেমিক কো-অর্ডিনেটর</div>
-              <div className="text-muted small" style={{ fontSize: '0.75rem' }}>Academic Coordinator</div>
-              <div className="text-muted font-monospace" style={{ fontSize: '0.7rem' }}>BSISC, Dhaka</div>
+              <div style={{ height: '40px' }}></div>
+              <div className="mx-auto mb-2" style={{ width: '85%', maxWidth: '220px', borderTop: '1.5px dotted #94a3b8' }}></div>
+              <div className="fw-bold text-dark fs-7" style={{ color: '#0f172a' }}>Aklima Begum</div>
+              <div className="fw-semibold text-secondary small" style={{ fontSize: '0.8rem' }}>VP (Jr. Div)</div>
             </div>
           </Col>
 
           <Col xs={4}>
             <div className="signature-box">
-              <div style={{ height: '50px' }}></div>
-              <div className="border-top border-dark mx-auto" style={{ width: '80%', maxWidth: '200px' }}></div>
-              <div className="fw-bold text-dark mt-1 small">ভাইস প্রিন্সিপাল</div>
-              <div className="text-muted small" style={{ fontSize: '0.75rem' }}>Vice Principal (Sr./Jr. Div)</div>
-              <div className="text-muted font-monospace" style={{ fontSize: '0.7rem' }}>BSISC, Dhaka</div>
+              <div style={{ height: '40px' }}></div>
+              <div className="mx-auto mb-2" style={{ width: '85%', maxWidth: '220px', borderTop: '1.5px dotted #94a3b8' }}></div>
+              <div className="fw-bold text-dark fs-7" style={{ color: '#0f172a' }}>Masuma Mamataz</div>
+              <div className="fw-semibold text-secondary small" style={{ fontSize: '0.8rem' }}>VP (Sr. Div)</div>
             </div>
           </Col>
 
           <Col xs={4}>
             <div className="signature-box">
-              <div style={{ height: '50px' }}></div>
-              <div className="border-top border-dark mx-auto" style={{ width: '80%', maxWidth: '200px' }}></div>
-              <div className="fw-bold text-dark mt-1 small">অধ্যক্ষ / প্রিন্সিপাল</div>
-              <div className="text-muted small" style={{ fontSize: '0.75rem' }}>Principal</div>
-              <div className="text-muted font-monospace" style={{ fontSize: '0.7rem' }}>BSISC, Dhaka</div>
+              <div style={{ height: '40px' }}></div>
+              <div className="mx-auto mb-2" style={{ width: '90%', maxWidth: '300px', borderTop: '1.5px dotted #94a3b8' }}></div>
+              <div className="fw-bold text-dark fs-7" style={{ color: '#0f172a', lineHeight: 1.3 }}>
+                Brig Gen Akhter Shahid, SUP (BAR), ndc, psc, G+, MPhil (LPR)
+              </div>
+              <div className="fw-bold small mt-0.5" style={{ fontSize: '0.82rem', color: '#1e3a8a' }}>Principal</div>
             </div>
           </Col>
         </Row>
