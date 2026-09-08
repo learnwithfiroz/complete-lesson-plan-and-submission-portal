@@ -1,1 +1,2 @@
-*.sqlite*
+# Keep database.sqlite tracked for instant deployment
+!database.sqlite
