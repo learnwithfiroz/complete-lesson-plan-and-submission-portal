@@ -110,15 +110,23 @@ class SystemDeployController extends Controller
                 $outputs[] = trim(Artisan::output());
             }
 
-            // 2. Ensure storage link
-            if (!File::exists(public_path('storage'))) {
-                Artisan::call('storage:link');
-                $outputs[] = trim(Artisan::output());
+            // 2. Ensure storage link safely (without throwing if exec/symlink is disabled on cPanel)
+            try {
+                if (!File::exists(public_path('storage'))) {
+                    @Artisan::call('storage:link');
+                    $outputs[] = trim(Artisan::output());
+                }
+            } catch (\Throwable $e) {
+                $outputs[] = 'Storage link skipped: ' . $e->getMessage();
             }
 
-            // 3. Clear and optimize caches
-            Artisan::call('optimize:clear');
-            $outputs[] = trim(Artisan::output());
+            // 3. Clear and optimize caches safely
+            try {
+                Artisan::call('optimize:clear');
+                $outputs[] = trim(Artisan::output());
+            } catch (\Throwable $e) {
+                $outputs[] = 'Optimize clear skipped: ' . $e->getMessage();
+            }
 
             $usersCount = Schema::hasTable('users') ? User::count() : 0;
 
