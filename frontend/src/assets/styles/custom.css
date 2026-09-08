@@ -1,0 +1,828 @@
+:root {
+  --primary-color: #0f2e5a;
+  --primary-hover: #1e3a8a;
+  --secondary-color: #10b981;
+  --bg-color: #f8fafc;
+  --card-bg: #ffffff;
+  --font-bn: 'Hind Siliguri', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-en: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-bn);
+  background-color: var(--bg-color);
+  color: #1e293b;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  touch-action: manipulation;
+}
+
+/* ==========================================================================
+   1. APP LAYOUT & CORE WRAPPERS
+   ========================================================================== */
+.portal-wrapper {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.portal-body {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-height: calc(100vh - 60px);
+  position: relative;
+}
+
+.portal-content {
+  flex: 1;
+  background-color: #f8fafc;
+  min-width: 0;
+  width: 100%;
+  padding-bottom: env(safe-area-inset-bottom, 1.5rem);
+}
+
+/* ==========================================================================
+   2. INSTITUTIONAL HEADER & NAVIGATION
+   ========================================================================== */
+.institutional-header {
+  height: 64px;
+  background: linear-gradient(135deg, #0f2e5a 0%, #1e3a8a 100%);
+  box-shadow: 0 4px 12px rgba(15, 46, 90, 0.15);
+  z-index: 1030;
+}
+
+.navbar {
+  transition: all 0.2s ease;
+}
+
+.school-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: white;
+  padding: 2px;
+  object-fit: contain;
+}
+
+.language-switch-btn {
+  border-color: rgba(255, 255, 255, 0.3);
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+
+.language-switch-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: white;
+}
+
+/* User Menu & Avatars */
+.avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #10b981;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.avatar-circle-lg {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background-color: #0f2e5a;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.85rem;
+  box-shadow: 0 4px 12px rgba(15, 46, 90, 0.2);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   3. RESPONSIVE SIDEBAR (Desktop & Mobile Drawer)
+   ========================================================================== */
+.institutional-sidebar {
+  width: 260px;
+  background-color: #0f2e5a;
+  color: #ffffff;
+  min-height: calc(100vh - 60px);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav-group-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  padding: 0.5rem 1rem 0.25rem 1rem;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1rem;
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  transition: all 0.15s ease;
+}
+
+.sidebar-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.sidebar-link.active {
+  background-color: #1e40af;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.sidebar-link .link-icon {
+  color: #94a3b8;
+  transition: color 0.15s ease;
+}
+
+.sidebar-link.active .link-icon {
+  color: #ffffff;
+}
+
+/* Mobile & Tablet Drawer */
+@media (max-width: 991.98px) {
+  .institutional-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    width: 280px !important;
+    max-width: 85vw !important;
+    z-index: 1060 !important;
+    transform: translateX(-100%);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
+
+  .institutional-sidebar.show {
+    transform: translateX(0) !important;
+  }
+
+  .sidebar-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background-color: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1050 !important;
+    animation: fadeIn 0.2s ease;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ==========================================================================
+   4. LIVE NOTICE TICKER (Smooth Continuous Scrolling Marquee)
+   ========================================================================== */
+.live-notice-ticker {
+  background: linear-gradient(90deg, #091e3a 0%, #0f2e5a 50%, #091e3a 100%);
+  border-bottom: 2px solid #f59e0b;
+  overflow: hidden;
+  height: 40px;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.ticker-label-badge {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.25);
+  z-index: 5;
+}
+
+.ticker-marquee-wrapper {
+  overflow: hidden;
+  position: relative;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.ticker-marquee-content {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: ticker-marquee-scroll 35s linear infinite;
+  will-change: transform;
+}
+
+.ticker-marquee-wrapper:hover .ticker-marquee-content,
+.ticker-marquee-content.paused {
+  animation-play-state: paused !important;
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  color: #f8fafc;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.ticker-item:hover {
+  color: #fde047 !important;
+  transform: translateY(-1px);
+}
+
+.ticker-item:hover .ticker-text {
+  color: #fde047 !important;
+  text-decoration: underline;
+}
+
+.ticker-controls {
+  z-index: 5;
+  background: #091e3a;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.25);
+}
+
+@keyframes ticker-marquee-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* ==========================================================================
+   5. RESPONSIVE CARDS & KPI SCORECARDS
+   ========================================================================== */
+.card {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Modern KPI Scorecard */
+.kpi-card {
+  background: #ffffff;
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.25rem;
+  border: 1px solid #e2e8f0;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.06);
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+}
+
+.kpi-card-navy::before { background: linear-gradient(90deg, #0f2e5a, #2563eb); }
+.kpi-card-success::before { background: linear-gradient(90deg, #10b981, #059669); }
+.kpi-card-danger::before { background: linear-gradient(90deg, #ef4444, #dc2626); }
+.kpi-card-primary::before { background: linear-gradient(90deg, #3b82f6, #1d4ed8); }
+
+.kpi-icon-box {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpi-icon-navy { background: #eff6ff; color: #1e3a8a; }
+.kpi-icon-success { background: #ecfdf5; color: #059669; }
+.kpi-icon-danger { background: #fef2f2; color: #dc2626; }
+.kpi-icon-primary { background: #eff6ff; color: #2563eb; }
+
+.kpi-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.kpi-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+
+/* Modern Segmented Control */
+.segmented-control-wrapper {
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  display: inline-flex;
+  border: 1px solid #e2e8f0;
+  gap: 4px;
+}
+
+.segmented-control-btn {
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #64748b;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  text-decoration: none;
+}
+
+.segmented-control-btn:hover {
+  color: #1e293b;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.segmented-control-btn.active {
+  background: #ffffff;
+  color: #0f2e5a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* Teacher Avatar Initials */
+.teacher-avatar-chip {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* File download chips */
+.file-download-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #334155;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.file-download-chip:hover {
+  background-color: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* Action Toolbar Groups */
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Search Input with Inset Icon */
+.modern-search-input {
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  padding: 6px 12px;
+  font-size: 0.875rem;
+  background-color: #ffffff;
+  transition: all 0.15s ease;
+}
+
+.modern-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Table Modern */
+.table-modern {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.table-modern thead th {
+  background-color: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table-modern tbody td {
+  padding: 12px 14px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.875rem;
+}
+
+.table-modern tbody tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* Dropzone Upload Box */
+.upload-dropzone-box {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  background-color: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-dropzone-box:hover {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+/* ==========================================================================
+   6. RESPONSIVE TABLES & TOUCH SCROLL
+   ========================================================================== */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0.65rem;
+  position: relative;
+}
+
+.table-responsive::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background-color: #94a3b8;
+  border-radius: 4px;
+}
+
+.table-responsive table {
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.table th, .table td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.table-wrap-cell {
+  white-space: normal !important;
+  word-break: break-word;
+}
+
+/* ==========================================================================
+   7. TOUCH CONTROLS & BUTTONS
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  transition: all 0.15s ease;
+  touch-action: manipulation;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-brand-navy {
+  background-color: #0f2e5a;
+  border-color: #0f2e5a;
+  color: #ffffff;
+}
+
+.btn-brand-navy:hover {
+  background-color: #1e3a8a;
+  border-color: #1e3a8a;
+  color: #ffffff;
+}
+
+.btn-whatsapp {
+  background-color: #25D366;
+  border-color: #25D366;
+  color: #ffffff;
+}
+
+.btn-whatsapp:hover {
+  background-color: #1ebe5d;
+  border-color: #1ebe5d;
+  color: #ffffff;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   8. RESPONSIVE MEDIA QUERIES (Mobile, Tablet, Desktop)
+   ========================================================================== */
+
+/* Tablets & Below (< 992px) */
+@media (max-width: 991.98px) {
+  .portal-content .container-fluid {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+    padding-top: 0.75rem !important;
+  }
+}
+
+/* Mobile Phones (< 768px) */
+@media (max-width: 767.98px) {
+  .portal-content .container-fluid {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    padding-top: 0.5rem !important;
+  }
+
+  .card-body {
+    padding: 0.85rem !important;
+  }
+
+  .card-header, .card-footer {
+    padding: 0.65rem 0.85rem !important;
+  }
+
+  .fs-4 {
+    font-size: 1.2rem !important;
+  }
+
+  .fs-5 {
+    font-size: 1.05rem !important;
+  }
+
+  h2, .h2 {
+    font-size: 1.25rem !important;
+  }
+
+  h3, .h3 {
+    font-size: 1.15rem !important;
+  }
+
+  h4, .h4 {
+    font-size: 1.05rem !important;
+  }
+
+  h5, .h5 {
+    font-size: 0.95rem !important;
+  }
+
+  /* Compact button padding on small screens */
+  .btn-sm {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  /* Form controls compact */
+  .form-control, .form-select {
+    font-size: 0.875rem !important;
+  }
+
+  /* Modal full width on mobile */
+  .modal-dialog {
+    margin: 0.35rem auto !important;
+    max-width: calc(100% - 0.7rem) !important;
+  }
+
+  .modal-body {
+    padding: 0.85rem !important;
+  }
+
+  .modal-header, .modal-footer {
+    padding: 0.65rem 0.85rem !important;
+  }
+
+  /* Notice ticker mobile scaling */
+  .live-notice-ticker {
+    font-size: 12px !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+}
+
+/* Extra Small Mobile Devices (< 420px) */
+@media (max-width: 419.98px) {
+  .navbar {
+    padding-left: 0.4rem !important;
+    padding-right: 0.4rem !important;
+  }
+
+  .btn {
+    font-size: 0.78rem;
+  }
+
+  .badge {
+    font-size: 0.7rem !important;
+  }
+
+  /* Hide extra text in pills on super narrow phones */
+  .d-xxs-none {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   9. AUTHENTICATION SCREENS RESPONSIVENESS
+   ========================================================================== */
+.auth-page-wrapper {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: linear-gradient(135deg, #091e3a 0%, #0f2e5a 50%, #1e3a8a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 480px;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
+}
+
+.auth-header {
+  background: linear-gradient(135deg, #0f2e5a 0%, #1e3a8a 100%);
+  padding: 1.5rem 1rem;
+}
+
+.auth-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+/* ==========================================================================
+   10. PWA INSTALL FLOATING BANNER
+   ========================================================================== */
+.pwa-install-banner-container {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  max-width: 460px;
+  margin: 0 auto;
+  z-index: 1080;
+  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   11. OFFICIAL REPORT PRINT STYLES
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 8mm;
+  }
+
+  .d-print-none,
+  .institutional-sidebar,
+  .navbar,
+  .sidebar-backdrop,
+  .live-notice-ticker,
+  .pwa-install-banner-container,
+  .btn,
+  .btn-group,
+  .pagination,
+  .nav-pills,
+  .modal-footer,
+  .modal-header .btn-close {
+    display: none !important;
+  }
+
+  .portal-wrapper,
+  .portal-body,
+  .portal-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    width: 100% !important;
+    min-height: auto !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt !important;
+  }
+
+  #printable-official-report {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .table {
+    font-size: 9pt !important;
+  }
+
+  .table th, .table td {
+    padding: 4px 6px !important;
+  }
+
+  .badge {
+    border: 1px solid #94a3b8 !important;
+    color: #000000 !important;
+    background: transparent !important;
+  }
+}

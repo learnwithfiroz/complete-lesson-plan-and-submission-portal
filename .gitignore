@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Environment files
+.env
+.env.backup
+.env.production
+.env.local
+
+# Build artifacts
+frontend/dist/
+public/build/
+public/hot/
+public/storage
+
+# Logs & cache
+*.log
+.phpunit.result.cache
+.phpunit.cache
+storage/logs/*.log
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+# Uploaded Files in Storage (keep structure, ignore uploaded files)
+storage/app/public/submissions/*
+storage/app/public/avatars/*
+storage/app/public/notices/*
+!storage/app/public/.gitignore
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
