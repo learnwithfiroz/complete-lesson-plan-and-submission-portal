@@ -26,8 +26,9 @@ class UserSeeder extends Seeder
             ['email' => 'admin@bsisc.edu.bd'],
             [
                 'name' => 'System Administrator',
+                'name_bn' => 'সিস্টেম অ্যাডমিনিস্ট্রেটর',
                 'password' => $defaultPassword,
-                'phone' => '+880 1711-000001',
+                'phone' => '01711000001',
                 'designation' => 'Lead Systems Engineer',
                 'is_active' => true,
             ]
@@ -40,65 +41,102 @@ class UserSeeder extends Seeder
             ['email' => 'principal@bsisc.edu.bd'],
             [
                 'name' => 'Brigadier General (Retd.) Dr. M. Rahman',
+                'name_bn' => 'ব্রিগেডিয়ার জেনারেল (অব.) ড. এম. রহমান',
                 'password' => $defaultPassword,
-                'phone' => '+880 1711-000002',
+                'phone' => '01711000002',
                 'designation' => 'Principal & Head of Institution',
                 'is_active' => true,
             ]
         );
         $principal->roles()->sync([$principalRole->id]);
 
-        // 3. Academic Coordinator
+        // 3. Academic Coordinators / Vice Principals
         $coordinatorRole = Role::where('name', 'academic_coordinator')->first();
-        $coordinator = User::updateOrCreate(
+        $coord1 = User::updateOrCreate(
             ['email' => 'coordinator@bsisc.edu.bd'],
             [
                 'name' => 'Prof. Shamima Nasrin',
+                'name_bn' => 'অধ্যাপক শামীমা নাসরিন',
                 'password' => $defaultPassword,
-                'phone' => '+880 1711-000003',
+                'phone' => '01711000003',
                 'designation' => 'Academic Coordinator (Secondary & College)',
                 'department_id' => $sciDept?->id,
                 'is_active' => true,
             ]
         );
-        $coordinator->roles()->sync([$coordinatorRole->id]);
+        $coord1->roles()->sync([$coordinatorRole->id]);
 
-        // 4. Five Teachers
+        $coord2 = User::updateOrCreate(
+            ['email' => 'masuma.mamataz@bsisc.edu.bd'],
+            [
+                'name' => 'Masuma Mamataz',
+                'name_bn' => 'মাসুমা মমতাজ',
+                'password' => $defaultPassword,
+                'phone' => '01780017602',
+                'designation' => 'Vice Principal (Senior Division)',
+                'department_id' => $sciDept?->id,
+                'is_active' => true,
+            ]
+        );
+        $coord2->roles()->sync([$coordinatorRole->id]);
+
+        // 4. Faculty & Senior Teachers
         $teacherRole = Role::where('name', 'teacher')->first();
 
         $teachers = [
             [
+                'email' => 'aziza.taher@bsisc.edu.bd',
+                'name' => 'Aziza Taher',
+                'name_bn' => 'আজিজা তাহের',
+                'phone' => '01720041189',
+                'designation' => 'Senior Teacher (Mathematics)',
+                'department_id' => $mathDept?->id,
+            ],
+            [
+                'email' => 'zebin.akter@bsisc.edu.bd',
+                'name' => 'Zebin Akter',
+                'name_bn' => 'জেবিন আক্তার',
+                'phone' => '01670250173',
+                'designation' => 'Senior Teacher (English)',
+                'department_id' => $engDept?->id,
+            ],
+            [
                 'email' => 'teacher1@bsisc.edu.bd',
                 'name' => 'Mohammad Tanvir Ahmed',
-                'phone' => '+880 1711-000004',
+                'name_bn' => 'মোহাম্মদ তানভীর আহমেদ',
+                'phone' => '01711000004',
                 'designation' => 'Senior Teacher (Mathematics)',
                 'department_id' => $mathDept?->id,
             ],
             [
                 'email' => 'teacher2@bsisc.edu.bd',
                 'name' => 'Farhana Yasmin',
-                'phone' => '+880 1711-000005',
+                'name_bn' => 'ফারহানা ইয়াসমিন',
+                'phone' => '01711000005',
                 'designation' => 'Assistant Teacher (English)',
                 'department_id' => $engDept?->id,
             ],
             [
                 'email' => 'teacher3@bsisc.edu.bd',
                 'name' => 'Kazi Nazmul Huda',
-                'phone' => '+880 1711-000006',
+                'name_bn' => 'কাজী নাজমুল হুদা',
+                'phone' => '01711000006',
                 'designation' => 'Senior Teacher (Physics & Science)',
                 'department_id' => $sciDept?->id,
             ],
             [
                 'email' => 'teacher4@bsisc.edu.bd',
                 'name' => 'Nusrat Jahan',
-                'phone' => '+880 1711-000007',
+                'name_bn' => 'নুসরাত জাহান',
+                'phone' => '01711000007',
                 'designation' => 'Assistant Teacher (Bangla)',
                 'department_id' => $banDept?->id,
             ],
             [
                 'email' => 'teacher5@bsisc.edu.bd',
                 'name' => 'Mahbubur Rahman',
-                'phone' => '+880 1711-000008',
+                'name_bn' => 'মাহবুবুর রহমান',
+                'phone' => '01711000008',
                 'designation' => 'Lecturer (ICT)',
                 'department_id' => $ictDept?->id,
             ],

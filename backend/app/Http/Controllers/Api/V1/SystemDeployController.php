@@ -98,15 +98,16 @@ class SystemDeployController extends Controller
             } elseif ($action === 'migrate_only') {
                 Artisan::call('migrate', ['--force' => true]);
                 $outputs[] = trim(Artisan::output());
+            } elseif ($action === 'seed_only' || $action === 'seed_users') {
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\UserSeeder']);
+                $outputs[] = trim(Artisan::output());
             } else {
-                // Default: migrate and seed
+                // Default: migrate and ensure seeders run
                 Artisan::call('migrate', ['--force' => true]);
                 $outputs[] = trim(Artisan::output());
 
-                if (!Schema::hasTable('users') || User::count() === 0) {
-                    Artisan::call('db:seed', ['--force' => true]);
-                    $outputs[] = trim(Artisan::output());
-                }
+                Artisan::call('db:seed', ['--force' => true]);
+                $outputs[] = trim(Artisan::output());
             }
 
             // 2. Ensure storage link
@@ -128,8 +129,10 @@ class SystemDeployController extends Controller
                 'log' => $outputs,
                 'default_credentials' => [
                     'admin' => ['email' => 'admin@bsisc.edu.bd', 'password' => 'Password123!'],
-                    'coordinator' => ['email' => 'coordinator@bsisc.edu.bd', 'password' => 'Password123!'],
-                    'teacher' => ['email' => 'teacher1@bsisc.edu.bd', 'password' => 'Password123!'],
+                    'principal' => ['phone' => '01711000002', 'password' => '01711000002'],
+                    'vp_masuma' => ['phone' => '01780017602', 'password' => '01780017602'],
+                    'teacher_aziza' => ['phone' => '01720041189', 'password' => '01720041189'],
+                    'teacher_zebin' => ['phone' => '01670250173', 'password' => '01670250173'],
                 ],
             ]);
         } catch (\Throwable $e) {
@@ -162,19 +165,25 @@ class SystemDeployController extends Controller
             Artisan::call('migrate', ['--force' => true]);
             $migrateOutput = Artisan::output();
 
-            // 2. Clear and optimize caches
+            // 2. Safely sync/seed users
+            Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\UserSeeder']);
+            $seedOutput = Artisan::output();
+
+            // 3. Clear and optimize caches
             Artisan::call('optimize:clear');
             $clearOutput = Artisan::output();
 
             Log::info('Automated cPanel Database Migration & Optimize executed successfully.', [
                 'ip' => $request->ip(),
                 'migrate_output' => $migrateOutput,
+                'seed_output' => $seedOutput,
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Database migrations and optimization completed successfully!',
                 'migrate_output' => trim($migrateOutput),
+                'seed_output' => trim($seedOutput),
                 'clear_output' => trim($clearOutput),
             ]);
         } catch (\Exception $e) {
