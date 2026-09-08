@@ -32,8 +32,14 @@ class PublicSettingsController extends Controller
             'academic_year' => '2026',
         ];
 
-        $merged = array_merge($defaultBranding, $publicSettings);
+        $merged = \Illuminate\Support\Facades\Cache::remember('public_school_settings', 3600, function () use ($defaultBranding, $publicSettings) {
+            return array_merge($defaultBranding, $publicSettings);
+        });
 
-        return $this->successResponse($merged);
+        return response()->json([
+            'success' => true,
+            'data' => $merged,
+        ])->header('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+
     }
 }
