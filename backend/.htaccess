@@ -1,5 +1,8 @@
+DirectoryIndex public/index.html public/index.php index.html index.php
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteCond %{REQUEST_URI} !^/public/
     RewriteRule ^(.*)$ public/$1 [L,QSA]
 </IfModule>
+

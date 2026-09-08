@@ -1,10 +1,9 @@
 <?php
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/{any}', function (Request $request) {
+Route::get('/{any?}', function (Request $request) {
     if ($request->wantsJson() || str_contains($request->header('Accept', ''), 'application/json')) {
         return response()->json([
             'system' => 'School Lesson Plan Management System REST API',
@@ -26,4 +25,4 @@ Route::get('/{any}', function (Request $request) {
         'status' => 'operational',
         'version' => '1.0.0',
     ]);
-})->where('any', '^(?!api).*$');
+})->where('any', '.*');
