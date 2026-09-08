@@ -59,7 +59,13 @@ jobs:
             .env
 
       - name: 🔄 Auto-Migrate Database & Clear Cache on cPanel
-        if: ${{ secrets.APP_DOMAIN != '' && secrets.DEPLOY_KEY != '' }}
+        env:
+          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
-          echo "Triggering automated database migration on cPanel..."
-          curl -k -s -X POST "https://${{ secrets.APP_DOMAIN }}/api/v1/system/auto-migrate?key=${{ secrets.DEPLOY_KEY }}" || echo "Migration webhook triggered"
+          if [ -n "$APP_DOMAIN" ] && [ -n "$DEPLOY_KEY" ]; then
+            echo "Triggering automated database migration on cPanel..."
+            curl -k -s -X POST "https://${APP_DOMAIN}/api/v1/system/auto-migrate?key=${DEPLOY_KEY}" || echo "Migration webhook triggered"
+          else
+            echo "APP_DOMAIN or DEPLOY_KEY is not configured yet in GitHub Secrets, skipping migration trigger."
+          fi
