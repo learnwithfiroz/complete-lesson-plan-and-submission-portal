@@ -16,13 +16,18 @@ export const LessonPlanCalendar: React.FC = () => {
     fetchEvents();
   }, [currentDate]);
 
+  const formatYMD = (y: number, m: number, d: number) => {
+    return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  };
+
   const fetchEvents = async () => {
     setLoading(true);
     try {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();
-      const startDate = new Date(year, month, 1).toISOString().split('T')[0];
-      const endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const startDate = formatYMD(year, month, 1);
+      const endDate = formatYMD(year, month, lastDay);
 
       const res = await calendarApi.getCalendarEvents({ start_date: startDate, end_date: endDate });
       setEvents(res.data || []);

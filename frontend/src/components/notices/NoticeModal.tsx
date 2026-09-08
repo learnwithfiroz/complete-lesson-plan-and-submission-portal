@@ -114,6 +114,7 @@ export const NoticeModal: React.FC<NoticeModalProps> = ({ show, notice, onHide, 
         toast.success(t('notices.created_success', 'Notice published successfully'));
       }
 
+      window.dispatchEvent(new CustomEvent('notices-updated'));
       onSuccess();
       onHide();
     } catch (err: any) {

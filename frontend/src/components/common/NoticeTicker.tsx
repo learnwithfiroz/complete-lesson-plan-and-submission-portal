@@ -17,28 +17,34 @@ export const NoticeTicker: React.FC = () => {
 
   useEffect(() => {
     loadTicker();
-    const interval = setInterval(loadTicker, 30000); // refresh every 30s
-    return () => clearInterval(interval);
+    const interval = setInterval(loadTicker, 15000); // refresh every 15s
+    const handleUpdate = () => {
+      loadTicker();
+    };
+    window.addEventListener('notices-updated', handleUpdate);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notices-updated', handleUpdate);
+    };
   }, []);
 
   const loadTicker = async () => {
     try {
       const res = await noticeApi.getLiveTicker();
-      if (res.data && res.data.length > 0) {
-        setNotices(res.data);
+      const list = Array.isArray(res.data) ? res.data : [];
+      setNotices(list);
 
-        // Check for new notices to trigger mobile vibration & chime
-        if (!isInitialLoadRef.current) {
-          const freshNotices = res.data.filter((n) => !knownNoticeIdsRef.current.has(n.id));
-          if (freshNotices.length > 0) {
-            triggerNoticeAlert(freshNotices[0]);
-          }
+      // Check for new notices to trigger mobile vibration & chime
+      if (!isInitialLoadRef.current && list.length > 0) {
+        const freshNotices = list.filter((n) => !knownNoticeIdsRef.current.has(n.id));
+        if (freshNotices.length > 0) {
+          triggerNoticeAlert(freshNotices[0]);
         }
-
-        // Update known IDs
-        res.data.forEach((n) => knownNoticeIdsRef.current.add(n.id));
-        isInitialLoadRef.current = false;
       }
+
+      // Update known IDs
+      knownNoticeIdsRef.current = new Set(list.map((n) => n.id));
+      isInitialLoadRef.current = false;
     } catch {
       // silent
     }

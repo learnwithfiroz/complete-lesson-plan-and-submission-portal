@@ -169,6 +169,7 @@ class NoticeController extends Controller
         ]);
 
         $notice->load('creator:id,name,email,designation');
+        $this->clearNoticeCache();
 
         return response()->json([
             'success' => true,
@@ -250,6 +251,7 @@ class NoticeController extends Controller
 
         $notice->save();
         $notice->load('creator:id,name,email,designation');
+        $this->clearNoticeCache();
 
         return response()->json([
             'success' => true,
@@ -276,6 +278,7 @@ class NoticeController extends Controller
         }
 
         $notice->delete();
+        $this->clearNoticeCache();
 
         return response()->json([
             'success' => true,
@@ -295,6 +298,7 @@ class NoticeController extends Controller
 
         $notice->is_pinned = !$notice->is_pinned;
         $notice->save();
+        $this->clearNoticeCache();
 
         return response()->json([
             'success' => true,
@@ -315,12 +319,25 @@ class NoticeController extends Controller
 
         $notice->is_published = !$notice->is_published;
         $notice->save();
+        $this->clearNoticeCache();
 
         return response()->json([
             'success' => true,
             'message' => $notice->is_published ? 'Notice published.' : 'Notice unpublished.',
             'data' => ['is_published' => $notice->is_published],
         ]);
+    }
+
+    /**
+     * Clear notice related caches.
+     */
+    protected function clearNoticeCache(): void
+    {
+        try {
+            \Illuminate\Support\Facades\Cache::flush();
+        } catch (\Throwable $e) {
+            // ignore
+        }
     }
 
     /**

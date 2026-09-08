@@ -84,6 +84,7 @@ export const NoticeBoard: React.FC = () => {
     try {
       const res = await noticeApi.togglePin(id);
       toast.success(res.message);
+      window.dispatchEvent(new CustomEvent('notices-updated'));
       loadNotices();
     } catch {
       toast.error('Failed to toggle pin');
@@ -96,6 +97,7 @@ export const NoticeBoard: React.FC = () => {
       await noticeApi.deleteNotice(deleteNoticeId);
       toast.success(t('notices.deleted_success', 'Notice deleted successfully'));
       setDeleteNoticeId(null);
+      window.dispatchEvent(new CustomEvent('notices-updated'));
       loadNotices();
     } catch {
       toast.error('Failed to delete notice');
