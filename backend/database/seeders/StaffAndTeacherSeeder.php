@@ -149,13 +149,21 @@ class StaffAndTeacherSeeder extends Seeder
             // Password is their mobile number
             $passwordHash = Hash::make($mobile);
 
-            // Find or Create user by email, phone, or name
-            $user = User::where('email', $email)
-                ->orWhere('phone', $mobile)
-                ->orWhere('name', $fullName)
+            // Find existing user by phone or email
+            $user = User::where('phone', $mobile)
+                ->orWhere('email', $email)
                 ->first();
 
             if (!$user) {
+                // Ensure email is globally unique in database
+                $checkEmail = $email;
+                $counter = 1;
+                while (User::where('email', $checkEmail)->exists()) {
+                    $counter++;
+                    $checkEmail = str_replace('@bsisc.edu.bd', $counter . '@bsisc.edu.bd', $baseEmail);
+                }
+                $email = $checkEmail;
+
                 $user = User::create([
                     'name' => $fullName,
                     'salutation' => $salutation,
