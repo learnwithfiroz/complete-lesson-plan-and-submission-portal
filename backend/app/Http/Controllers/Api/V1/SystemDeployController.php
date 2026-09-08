@@ -98,19 +98,27 @@ class SystemDeployController extends Controller
             } elseif ($action === 'migrate_only') {
                 Artisan::call('migrate', ['--force' => true]);
                 $outputs[] = trim(Artisan::output());
-            } elseif ($action === 'seed_only' || $action === 'seed_users' || $action === 'seed_staff') {
+            } elseif ($action === 'seed_only' || $action === 'seed_users' || $action === 'seed_staff' || $action === 'seed_all') {
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\RoleAndPermissionSeeder']);
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\DepartmentSeeder']);
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\UserSeeder']);
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\StaffAndTeacherSeeder']);
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\AcademicSeeder']);
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\SettingSeeder']);
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\NoticeSeeder']);
                 $outputs[] = trim(Artisan::output());
             } else {
                 // Default: migrate and ensure seeders run
                 Artisan::call('migrate', ['--force' => true]);
                 $outputs[] = trim(Artisan::output());
 
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\RoleAndPermissionSeeder']);
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\DepartmentSeeder']);
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\UserSeeder']);
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\StaffAndTeacherSeeder']);
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\AcademicSeeder']);
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\SettingSeeder']);
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\NoticeSeeder']);
                 $outputs[] = trim(Artisan::output());
             }
 
@@ -177,10 +185,14 @@ class SystemDeployController extends Controller
             Artisan::call('migrate', ['--force' => true]);
             $migrateOutput = Artisan::output();
 
-            // 2. Safely sync/seed departments and users
+            // 2. Safely sync/seed roles, departments and users
+            Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\RoleAndPermissionSeeder']);
             Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\DepartmentSeeder']);
             Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\UserSeeder']);
             Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\StaffAndTeacherSeeder']);
+            Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\AcademicSeeder']);
+            Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\SettingSeeder']);
+            Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\NoticeSeeder']);
             $seedOutput = Artisan::output();
 
             // 3. Clear and optimize caches
