@@ -1,9 +1,15 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function (Request $request) {
+Route::get('/{any}', function (Request $request) {
+    $indexPath = public_path('index.html');
+    if (File::exists($indexPath)) {
+        return response()->file($indexPath);
+    }
+
     if (!$request->wantsJson() && !str_contains($request->header('Accept', ''), 'application/json')) {
         $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
         return redirect()->away($frontendUrl);
@@ -16,4 +22,4 @@ Route::get('/', function (Request $request) {
         'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
         'timestamp' => now()->toIso8601String(),
     ]);
-});
+})->where('any', '^(?!api).*$');
