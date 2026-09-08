@@ -17,6 +17,9 @@ import {
   ShieldCheck,
   Bell,
   CheckSquare,
+  Sliders,
+  Briefcase,
+  Layers,
   X,
 } from 'lucide-react';
 
@@ -189,6 +192,46 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onCloseMobile }) => {
             Notifications
           </NavLink>
         </li>
+
+        {/* Form Builder Studio Section */}
+        {isAdminOrCoord && (
+          <>
+            <li className="nav-header text-white-50 small mt-3 mb-1 px-3 text-uppercase fw-bold d-flex align-items-center justify-content-between">
+              <span>Form Builder Studio</span>
+              <span className="badge bg-warning text-dark font-monospace" style={{ fontSize: '9px' }}>PRO</span>
+            </li>
+
+            <li className="nav-item">
+              <NavLink
+                to="/form-builder/admission"
+                className={({ isActive }) => `nav-link text-white d-flex align-items-center ${isActive ? 'bg-secondary fw-bold text-success' : 'opacity-75'}`}
+              >
+                <Sliders size={16} className="me-2 text-warning" />
+                Admission Form Builder
+              </NavLink>
+            </li>
+
+            <li className="nav-item">
+              <NavLink
+                to="/form-builder/job"
+                className={({ isActive }) => `nav-link text-white d-flex align-items-center ${isActive ? 'bg-secondary' : 'opacity-75'}`}
+              >
+                <Briefcase size={16} className="me-2 text-info" />
+                Job Application Form
+              </NavLink>
+            </li>
+
+            <li className="nav-item">
+              <NavLink
+                to="/form-builder/tender"
+                className={({ isActive }) => `nav-link text-white d-flex align-items-center ${isActive ? 'bg-secondary' : 'opacity-75'}`}
+              >
+                <Layers size={16} className="me-2 text-light" />
+                Tender Bid Form
+              </NavLink>
+            </li>
+          </>
+        )}
 
         {/* Academic Structure Section */}
         {isAdminOrCoord && (

@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             AcademicSeeder::class,
             LessonPlanSeeder::class,
             NoticeSeeder::class,
+            FormSchemaSeeder::class,
         ]);
     }
 }

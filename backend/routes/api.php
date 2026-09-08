@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\LessonPlanTemplateController;
 use App\Http\Controllers\Api\V1\NoticeController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\FormSchemaController;
 use App\Http\Controllers\Api\V1\PublicSettingsController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RoleController;
@@ -25,6 +26,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     // Public Endpoints
     Route::get('/settings/public', [PublicSettingsController::class, 'index']);
+    Route::get('/form-schemas/default/{form_type?}', [FormSchemaController::class, 'getDefault']);
     Route::get('/system/status', [SystemDeployController::class, 'systemStatus']);
     Route::post('/system/setup', [SystemDeployController::class, 'autoSetup']);
     Route::match(['get', 'post'], '/system/auto-migrate', [SystemDeployController::class, 'autoMigrate']);
@@ -172,5 +174,13 @@ Route::prefix('v1')->group(function () {
         Route::post('/submission-tracking/{batch}/submit', [SubmissionTrackingController::class, 'submitFiles']);
         Route::delete('/submission-tracking/files/{file}', [SubmissionTrackingController::class, 'deleteFile']);
         Route::patch('/submission-tracking/submissions/{submission}/status', [SubmissionTrackingController::class, 'updateSubmissionStatus']);
+
+        // Dynamic Form Studio & Schema Builder CRUD
+        Route::get('/form-schemas', [FormSchemaController::class, 'index']);
+        Route::post('/form-schemas', [FormSchemaController::class, 'store']);
+        Route::get('/form-schemas/{formSchema}', [FormSchemaController::class, 'show']);
+        Route::put('/form-schemas/{formSchema}', [FormSchemaController::class, 'update']);
+        Route::post('/form-schemas/{formSchema}/duplicate', [FormSchemaController::class, 'duplicate']);
+        Route::delete('/form-schemas/{formSchema}', [FormSchemaController::class, 'destroy']);
     });
 });

@@ -60,6 +60,9 @@ const SubjectsChapters = lazyWithRetry(() => import('./pages/academic/SubjectsCh
 const TeacherAssignments = lazyWithRetry(() => import('./pages/academic/TeacherAssignments').then(m => ({ default: m.TeacherAssignments })));
 const DepartmentList = lazyWithRetry(() => import('./pages/departments/DepartmentList').then(m => ({ default: m.DepartmentList })));
 
+// Form Studio & Schema Builder (Lazy Loaded with auto-retry)
+const FormBuilderStudio = lazyWithRetry(() => import('./pages/form-builder/FormBuilderStudio').then(m => ({ default: m.FormBuilderStudio })));
+
 // User & RBAC Management (Lazy Loaded with auto-retry)
 const UserList = lazyWithRetry(() => import('./pages/users/UserList').then(m => ({ default: m.UserList })));
 const RoleList = lazyWithRetry(() => import('./pages/users/RoleList').then(m => ({ default: m.RoleList })));
@@ -105,6 +108,10 @@ export const App: React.FC = () => {
               <Route path="/academic/subjects" element={<SubjectsChapters />} />
               <Route path="/academic/assignments" element={<TeacherAssignments />} />
               <Route path="/departments" element={<DepartmentList />} />
+
+              {/* Dynamic Form Studio & Schema Builder */}
+              <Route path="/form-builder" element={<FormBuilderStudio />} />
+              <Route path="/form-builder/:type" element={<FormBuilderStudio />} />
 
               {/* User & RBAC Management Module */}
               <Route path="/users" element={<UserList />} />

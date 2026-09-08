@@ -106,6 +106,7 @@ class SystemDeployController extends Controller
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\AcademicSeeder']);
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\SettingSeeder']);
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\NoticeSeeder']);
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\FormSchemaSeeder']);
                 $outputs[] = trim(Artisan::output());
             } else {
                 // Default: migrate and ensure seeders run
@@ -119,6 +120,7 @@ class SystemDeployController extends Controller
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\AcademicSeeder']);
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\SettingSeeder']);
                 Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\NoticeSeeder']);
+                Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\FormSchemaSeeder']);
                 $outputs[] = trim(Artisan::output());
             }
 
@@ -206,6 +208,7 @@ class SystemDeployController extends Controller
             Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\AcademicSeeder']);
             Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\SettingSeeder']);
             Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\NoticeSeeder']);
+            Artisan::call('db:seed', ['--force' => true, '--class' => 'Database\Seeders\FormSchemaSeeder']);
             $seedOutput = Artisan::output();
 
             // 3. Clear and optimize caches
