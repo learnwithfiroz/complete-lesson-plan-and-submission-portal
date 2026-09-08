@@ -1,0 +1,27 @@
+{
+  "name": "BSISC Lesson Plan & Institutional ERP",
+  "short_name": "BSISC Lesson",
+  "description": "Baridhara Scholars International School & College - Lesson Plan, Submission Tracking & Institutional Management System",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#1e3a8a",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"]
+}
