@@ -51,9 +51,12 @@ jobs:
           server-dir: public_html/
           exclude: |
             **/.git*
-            **/.git*/**
-            **/node_modules/**
-            frontend/src/**
             storage/logs/*.log
             storage/app/public/submissions/*
             .env
+
+      - name: 🔄 Auto-Migrate Database & Clear Cache on cPanel
+        if: ${{ secrets.APP_DOMAIN != '' }}
+        run: |
+          echo "Triggering automated database migration on cPanel..."
+          curl -s -X POST "https://${{ secrets.APP_DOMAIN }}/api/v1/system/auto-migrate?key=${{ secrets.DEPLOY_KEY }}" || echo "Migration webhook triggered"

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\SubmissionTrackingController;
+use App\Http\Controllers\Api\V1\SystemDeployController;
 use App\Http\Controllers\Api\V1\TeacherAssignmentController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     // Public Endpoints
     Route::get('/settings/public', [PublicSettingsController::class, 'index']);
+    Route::match(['get', 'post'], '/system/auto-migrate', [SystemDeployController::class, 'autoMigrate']);
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
