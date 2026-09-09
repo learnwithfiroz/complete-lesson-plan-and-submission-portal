@@ -15,9 +15,9 @@ export interface PaginatedResponse<T> {
 /**
  * Broadcast notice changes across all open tabs and UI components instantly
  */
-export const broadcastNoticesUpdated = () => {
+export const broadcastNoticesUpdated = (deletedNoticeId?: number) => {
   try {
-    window.dispatchEvent(new CustomEvent('notices-updated'));
+    window.dispatchEvent(new CustomEvent('notices-updated', { detail: { deletedNoticeId, timestamp: Date.now() } }));
   } catch {
     // ignore
   }
@@ -25,7 +25,7 @@ export const broadcastNoticesUpdated = () => {
   try {
     if (typeof BroadcastChannel !== 'undefined') {
       const channel = new BroadcastChannel('bsisc_notices_channel');
-      channel.postMessage({ type: 'notices-updated', timestamp: Date.now() });
+      channel.postMessage({ type: 'notices-updated', deletedNoticeId, timestamp: Date.now() });
       channel.close();
     }
   } catch {
@@ -33,7 +33,7 @@ export const broadcastNoticesUpdated = () => {
   }
 
   try {
-    localStorage.setItem('bsisc_notices_last_update', Date.now().toString());
+    localStorage.setItem('bsisc_notices_last_update', JSON.stringify({ deletedNoticeId, timestamp: Date.now() }));
   } catch {
     // ignore
   }
@@ -79,7 +79,7 @@ export const noticeApi = {
 
   deleteNotice: async (id: number): Promise<{ success: boolean; message: string }> => {
     const res = await apiClient.delete(`/api/v1/notices/${id}`);
-    broadcastNoticesUpdated();
+    broadcastNoticesUpdated(id);
     return res.data;
   },
 

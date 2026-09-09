@@ -101,10 +101,10 @@ class LessonPlanService
                 foreach ($data['activities'] as $idx => $activity) {
                     LessonPlanActivity::create([
                         'lesson_plan_id' => $lessonPlan->id,
-                        'stage' => $activity['stage'],
+                        'stage' => self::normalizeStage($activity['stage'] ?? null),
                         'duration_minutes' => $activity['duration_minutes'] ?? 5,
-                        'teacher_activities' => $activity['teacher_activities'],
-                        'student_activities' => $activity['student_activities'],
+                        'teacher_activities' => $activity['teacher_activities'] ?? '',
+                        'student_activities' => $activity['student_activities'] ?? '',
                         'teaching_materials' => $activity['teaching_materials'] ?? null,
                         'assessment_method' => $activity['assessment_method'] ?? null,
                         'sort_order' => $activity['sort_order'] ?? $idx,
@@ -198,15 +198,15 @@ class LessonPlanService
                 }
             }
 
-            if (isset($data['activities'])) {
+            if (isset($data['activities']) && is_array($data['activities'])) {
                 $lessonPlan->activities()->delete();
                 foreach ($data['activities'] as $idx => $activity) {
                     LessonPlanActivity::create([
                         'lesson_plan_id' => $lessonPlan->id,
-                        'stage' => $activity['stage'],
+                        'stage' => self::normalizeStage($activity['stage'] ?? null),
                         'duration_minutes' => $activity['duration_minutes'] ?? 5,
-                        'teacher_activities' => $activity['teacher_activities'],
-                        'student_activities' => $activity['student_activities'],
+                        'teacher_activities' => $activity['teacher_activities'] ?? '',
+                        'student_activities' => $activity['student_activities'] ?? '',
                         'teaching_materials' => $activity['teaching_materials'] ?? null,
                         'assessment_method' => $activity['assessment_method'] ?? null,
                         'sort_order' => $activity['sort_order'] ?? $idx,
@@ -480,10 +480,10 @@ class LessonPlanService
             foreach ($original->activities as $activity) {
                 LessonPlanActivity::create([
                     'lesson_plan_id' => $newPlan->id,
-                    'stage' => $activity->stage,
-                    'duration_minutes' => $activity->duration_minutes,
-                    'teacher_activities' => $activity->teacher_activities,
-                    'student_activities' => $activity->student_activities,
+                    'stage' => self::normalizeStage($activity->stage),
+                    'duration_minutes' => $activity->duration_minutes ?? 5,
+                    'teacher_activities' => $activity->teacher_activities ?? '',
+                    'student_activities' => $activity->student_activities ?? '',
                     'teaching_materials' => $activity->teaching_materials,
                     'assessment_method' => $activity->assessment_method,
                     'sort_order' => $activity->sort_order,
@@ -500,6 +500,41 @@ class LessonPlanService
 
             return $newPlan;
         });
+    }
+
+    public static function normalizeStage(?string $stage): string
+    {
+        if (empty($stage)) {
+            return 'introduction';
+        }
+        $clean = strtolower(trim(str_replace(['-', ' '], '_', $stage)));
+        $map = [
+            'warmup' => 'introduction',
+            'warm_up' => 'introduction',
+            'intro' => 'introduction',
+            'introduction' => 'introduction',
+            'presentation' => 'presentation',
+            'present' => 'presentation',
+            'lecture' => 'presentation',
+            'direct_instruction' => 'presentation',
+            'guided_practice' => 'guided_practice',
+            'guided' => 'guided_practice',
+            'practice' => 'guided_practice',
+            'group_work' => 'group_work',
+            'group' => 'group_work',
+            'pair_work' => 'group_work',
+            'collaborative' => 'group_work',
+            'assessment' => 'assessment',
+            'evaluation' => 'assessment',
+            'quiz' => 'assessment',
+            'exit_ticket' => 'assessment',
+            'conclusion' => 'conclusion',
+            'summary' => 'conclusion',
+            'homework' => 'conclusion',
+            'plenary' => 'conclusion',
+            'wrap_up' => 'conclusion',
+        ];
+        return $map[$clean] ?? $clean;
     }
 
     public function generatePdf(LessonPlan $lessonPlan)

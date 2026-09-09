@@ -19,14 +19,19 @@ export const NoticeTicker: React.FC = () => {
     loadTicker();
     const interval = setInterval(loadTicker, 4000); // Live poll every 4s
 
-    const handleUpdate = () => {
+    const handleUpdate = (e?: any) => {
+      const deletedId = e?.detail?.deletedNoticeId;
+      if (deletedId) {
+        setNotices((prev) => prev.filter((n) => n.id !== deletedId));
+        knownNoticeIdsRef.current.delete(deletedId);
+      }
       loadTicker();
     };
 
     // 1. Same-tab custom event
     window.addEventListener('notices-updated', handleUpdate);
-    window.addEventListener('focus', handleUpdate);
-    document.addEventListener('visibilitychange', handleUpdate);
+    window.addEventListener('focus', () => loadTicker());
+    document.addEventListener('visibilitychange', () => loadTicker());
 
     // 2. Cross-tab BroadcastChannel
     let broadcastChannel: BroadcastChannel | null = null;
@@ -35,6 +40,11 @@ export const NoticeTicker: React.FC = () => {
         broadcastChannel = new BroadcastChannel('bsisc_notices_channel');
         broadcastChannel.onmessage = (event) => {
           if (event.data?.type === 'notices-updated') {
+            if (event.data?.deletedNoticeId) {
+              const delId = event.data.deletedNoticeId;
+              setNotices((prev) => prev.filter((n) => n.id !== delId));
+              knownNoticeIdsRef.current.delete(delId);
+            }
             loadTicker();
           }
         };
@@ -46,6 +56,15 @@ export const NoticeTicker: React.FC = () => {
     // 3. Storage event fallback
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'bsisc_notices_last_update') {
+        try {
+          const parsed = JSON.parse(e.newValue || '{}');
+          if (parsed?.deletedNoticeId) {
+            setNotices((prev) => prev.filter((n) => n.id !== parsed.deletedNoticeId));
+            knownNoticeIdsRef.current.delete(parsed.deletedNoticeId);
+          }
+        } catch {
+          // ignore
+        }
         loadTicker();
       }
     };

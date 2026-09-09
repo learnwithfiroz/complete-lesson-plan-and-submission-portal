@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Button, Form, Badge, Table, InputGroup } from 'react-bootstrap';
 import { useTranslation } from '../../locales/i18n';
 import { useAuthStore } from '../../store/authStore';
-import { noticeApi } from '../../api/notices';
+import { noticeApi, broadcastNoticesUpdated } from '../../api/notices';
 import type { Notice } from '../../types/notice';
 import { NoticeDetailModal } from '../../components/notices/NoticeDetailModal';
 import { NoticeModal } from '../../components/notices/NoticeModal';
@@ -84,7 +84,7 @@ export const NoticeBoard: React.FC = () => {
     try {
       const res = await noticeApi.togglePin(id);
       toast.success(res.message);
-      window.dispatchEvent(new CustomEvent('notices-updated'));
+      broadcastNoticesUpdated();
       loadNotices();
     } catch {
       toast.error('Failed to toggle pin');
@@ -99,12 +99,12 @@ export const NoticeBoard: React.FC = () => {
     setNotices((prev) => prev.filter((n) => n.id !== targetId));
     setTotalRecords((prev) => Math.max(0, prev - 1));
     setDeleteNoticeId(null);
-    window.dispatchEvent(new CustomEvent('notices-updated'));
+    broadcastNoticesUpdated(targetId);
 
     try {
       await noticeApi.deleteNotice(targetId);
       toast.success(t('notices.deleted_success', 'Notice deleted successfully'));
-      window.dispatchEvent(new CustomEvent('notices-updated'));
+      broadcastNoticesUpdated(targetId);
       loadNotices();
     } catch {
       toast.error('Failed to delete notice');
