@@ -26,7 +26,8 @@ class SubmissionTrackingController extends Controller
         $category = $request->get('category', 'lesson_plan');
         $status = $request->get('status', 'active'); // active, inactive, all
 
-        $query = SubmissionBatch::with(['schoolClass', 'creator'])
+        $query = SubmissionBatch::with(['schoolClass:id,name_bn,name_en', 'creator:id,name'])
+            ->withCount(['submissions as submitted_count'])
             ->where('category', $category);
 
         if ($status === 'active') {
@@ -39,45 +40,59 @@ class SubmissionTrackingController extends Controller
 
         // Get total active teachers in system
         $teacherRole = Role::where('name', 'teacher')->first();
-        $totalTeachersCount = $teacherRole ? $teacherRole->users()->where('is_active', true)->count() : User::where('is_active', true)->count();
+        $totalTeachersCount = $teacherRole 
+            ? $teacherRole->users()->where('is_active', true)->count() 
+            : User::where('is_active', true)->count();
         if ($totalTeachersCount === 0) {
             $totalTeachersCount = User::where('is_active', true)->count();
         }
 
-        $activeCount = SubmissionBatch::where('category', $category)->where('is_active', true)->count();
-        $inactiveCount = SubmissionBatch::where('category', $category)->where('is_active', false)->count();
+        // Summary counts for badges
+        $countsSummary = SubmissionBatch::where('category', $category)
+            ->selectRaw('SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_count, SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive_count')
+            ->first();
+        $activeCount = (int)($countsSummary->active_count ?? 0);
+        $inactiveCount = (int)($countsSummary->inactive_count ?? 0);
 
-        $data = $batches->map(function ($batch) use ($totalTeachersCount, $user) {
-            $submittedCount = $batch->submissions()->count();
+        // Fetch user submissions in 1 batch query if user logged in
+        $userSubmissions = collect();
+        if ($user && $batches->isNotEmpty()) {
+            $userSubmissions = TeacherSubmission::whereIn('batch_id', $batches->pluck('id'))
+                ->where('teacher_id', $user->id)
+                ->with(['files:id,submission_id,file_name,file_path,file_size,file_type,gdrive_file_id,gdrive_view_link,gdrive_download_link,gdrive_synced_at'])
+                ->get()
+                ->keyBy('batch_id');
+        }
+
+        $data = $batches->map(function ($batch) use ($totalTeachersCount, $userSubmissions) {
+            $submittedCount = (int)($batch->submitted_count ?? 0);
             $notSubmittedCount = max(0, $totalTeachersCount - $submittedCount);
             $completionPercent = $totalTeachersCount > 0 ? round(($submittedCount / $totalTeachersCount) * 100) : 0;
 
+            $mySub = $userSubmissions->get($batch->id);
             $mySubmission = null;
-            if ($user) {
-                $sub = $batch->submissions()->where('teacher_id', $user->id)->with('files')->first();
-                if ($sub) {
-                    $mySubmission = [
-                        'id' => $sub->id,
-                        'status' => $sub->status,
-                        'update_count' => (int)($sub->update_count ?? 1),
-                        'submitted_at' => $sub->submitted_at?->toISOString(),
-                        'last_updated_at' => $sub->last_updated_at?->toISOString(),
-                        'remarks' => $sub->remarks,
-                        'gdrive_folder_id' => $sub->gdrive_folder_id,
-                        'gdrive_folder_url' => $sub->gdrive_folder_url,
-                        'files' => $sub->files->map(fn($f) => [
-                            'id' => $f->id,
-                            'file_name' => $f->file_name,
-                            'file_url' => $f->file_url,
-                            'file_size' => $f->file_size,
-                            'file_type' => $f->file_type,
-                            'gdrive_file_id' => $f->gdrive_file_id,
-                            'gdrive_view_link' => $f->gdrive_view_link,
-                            'gdrive_download_link' => $f->gdrive_download_link,
-                            'gdrive_synced_at' => $f->gdrive_synced_at?->toISOString(),
-                        ]),
-                    ];
-                }
+            if ($mySub) {
+                $mySubmission = [
+                    'id' => $mySub->id,
+                    'status' => $mySub->status,
+                    'update_count' => (int)($mySub->update_count ?? 1),
+                    'submitted_at' => $mySub->submitted_at?->toISOString(),
+                    'last_updated_at' => $mySub->last_updated_at?->toISOString(),
+                    'remarks' => $mySub->remarks,
+                    'gdrive_folder_id' => $mySub->gdrive_folder_id,
+                    'gdrive_folder_url' => $mySub->gdrive_folder_url,
+                    'files' => $mySub->files->map(fn($f) => [
+                        'id' => $f->id,
+                        'file_name' => $f->file_name,
+                        'file_url' => $f->file_url,
+                        'file_size' => $f->file_size,
+                        'file_type' => $f->file_type,
+                        'gdrive_file_id' => $f->gdrive_file_id,
+                        'gdrive_view_link' => $f->gdrive_view_link,
+                        'gdrive_download_link' => $f->gdrive_download_link,
+                        'gdrive_synced_at' => $f->gdrive_synced_at?->toISOString(),
+                    ]),
+                ];
             }
 
             return [
@@ -86,15 +101,15 @@ class SubmissionTrackingController extends Controller
                 'title' => $batch->title,
                 'class_id' => $batch->class_id,
                 'class_name' => $batch->schoolClass ? ($batch->schoolClass->name_bn ?: $batch->schoolClass->name_en) : 'সব ক্লাস',
-                'start_date' => $batch->start_date->format('Y-m-d'),
-                'end_date' => $batch->end_date->format('Y-m-d'),
-                'date_range_display' => $batch->start_date->format('d M') . ' - ' . $batch->end_date->format('d M Y'),
-                'allow_multiple_files' => $batch->allow_multiple_files,
+                'start_date' => $batch->start_date?->format('Y-m-d') ?: date('Y-m-d'),
+                'end_date' => $batch->end_date?->format('Y-m-d') ?: date('Y-m-d'),
+                'date_range_display' => ($batch->start_date ? $batch->start_date->format('d M') : '') . ' - ' . ($batch->end_date ? $batch->end_date->format('d M Y') : ''),
+                'allow_multiple_files' => (bool)$batch->allow_multiple_files,
                 'instructions' => $batch->instructions,
-                'is_active' => $batch->is_active,
+                'is_active' => (bool)$batch->is_active,
                 'gdrive_folder_id' => $batch->gdrive_folder_id,
                 'gdrive_folder_url' => $batch->gdrive_folder_url,
-                'created_at' => $batch->created_at->toISOString(),
+                'created_at' => $batch->created_at?->toISOString(),
                 'stats' => [
                     'total_teachers' => $totalTeachersCount,
                     'submitted_count' => $submittedCount,
@@ -158,12 +173,12 @@ class SubmissionTrackingController extends Controller
     public function show(Request $request, SubmissionBatch $batch): JsonResponse
     {
         $user = $request->user();
-        $batch->load(['schoolClass', 'creator']);
+        $batch->load(['schoolClass:id,name_bn,name_en', 'creator:id,name']);
 
-        $isAdmin = $user->hasAnyRole(['super_admin', 'principal', 'academic_coordinator']);
+        $isAdmin = $user && $user->hasAnyRole(['super_admin', 'principal', 'academic_coordinator']);
 
         // Fetch My Submission
-        $mySub = $batch->submissions()->where('teacher_id', $user->id)->with('files')->first();
+        $mySub = $user ? $batch->submissions()->where('teacher_id', $user->id)->with('files')->first() : null;
         $mySubmission = null;
         if ($mySub) {
             $mySubmission = [
@@ -199,12 +214,16 @@ class SubmissionTrackingController extends Controller
         if ($isAdmin) {
             $teacherRole = Role::where('name', 'teacher')->first();
             $teachersQuery = $teacherRole ? $teacherRole->users() : User::query();
-            $teachers = $teachersQuery->where('is_active', true)
-                ->with('department')
-                ->orderByRaw('serial_number IS NULL, serial_number ASC, name ASC')
+            $teachers = $teachersQuery->where('users.is_active', true)
+                ->with('department:id,name_bn,name_en')
+                ->select('users.id', 'users.employee_id', 'users.serial_number', 'users.name', 'users.salutation', 'users.gender', 'users.designation', 'users.department_id', 'users.phone')
+                ->orderByRaw('users.serial_number IS NULL, users.serial_number ASC, users.name ASC')
                 ->get();
 
-            $submissions = $batch->submissions()->with('files')->get()->keyBy('teacher_id');
+            $submissions = $batch->submissions()
+                ->with(['files:id,submission_id,file_name,file_path,file_size,file_type,gdrive_file_id,gdrive_view_link,gdrive_download_link,gdrive_synced_at'])
+                ->get()
+                ->keyBy('teacher_id');
 
             $teacherList = $teachers->map(function ($teacher) use ($submissions) {
                 $sub = $submissions->get($teacher->id);
@@ -254,12 +273,12 @@ class SubmissionTrackingController extends Controller
                 'category' => $batch->category,
                 'title' => $batch->title,
                 'class_name' => $batch->schoolClass ? ($batch->schoolClass->name_bn ?: $batch->schoolClass->name_en) : 'সব ক্লাস',
-                'start_date' => $batch->start_date->format('Y-m-d'),
-                'end_date' => $batch->end_date->format('Y-m-d'),
-                'date_range_display' => $batch->start_date->format('d M') . ' - ' . $batch->end_date->format('d M Y'),
-                'allow_multiple_files' => $batch->allow_multiple_files,
+                'start_date' => $batch->start_date?->format('Y-m-d') ?: date('Y-m-d'),
+                'end_date' => $batch->end_date?->format('Y-m-d') ?: date('Y-m-d'),
+                'date_range_display' => ($batch->start_date ? $batch->start_date->format('d M') : '') . ' - ' . ($batch->end_date ? $batch->end_date->format('d M Y') : ''),
+                'allow_multiple_files' => (bool)$batch->allow_multiple_files,
                 'instructions' => $batch->instructions,
-                'is_active' => $batch->is_active,
+                'is_active' => (bool)$batch->is_active,
                 'gdrive_folder_id' => $batch->gdrive_folder_id,
                 'gdrive_folder_url' => $batch->gdrive_folder_url,
             ],
@@ -421,7 +440,7 @@ class SubmissionTrackingController extends Controller
 
     public function downloadAllZip(SubmissionBatch $batch)
     {
-        $submissions = $batch->submissions()->with(['teacher.department', 'files'])->get();
+        $submissions = $batch->submissions()->with(['teacher.department:id,name_bn,name_en', 'files'])->get();
         if ($submissions->isEmpty()) {
             return response()->json(['success' => false, 'message' => 'কোনো ফাইল জমা হয়নি।'], 404);
         }
@@ -455,16 +474,20 @@ class SubmissionTrackingController extends Controller
 
     public function exportSundayReport(SubmissionBatch $batch): JsonResponse
     {
-        $batch->load(['schoolClass', 'creator']);
+        $batch->load(['schoolClass:id,name_bn,name_en', 'creator:id,name']);
 
         $teacherRole = Role::where('name', 'teacher')->first();
         $teachersQuery = $teacherRole ? $teacherRole->users() : User::query();
-        $teachers = $teachersQuery->where('is_active', true)
-            ->with('department')
-            ->orderByRaw('serial_number IS NULL, serial_number ASC, name ASC')
+        $teachers = $teachersQuery->where('users.is_active', true)
+            ->with('department:id,name_bn,name_en')
+            ->select('users.id', 'users.employee_id', 'users.serial_number', 'users.name', 'users.salutation', 'users.gender', 'users.designation', 'users.department_id', 'users.phone')
+            ->orderByRaw('users.serial_number IS NULL, users.serial_number ASC, users.name ASC')
             ->get();
 
-        $submissions = $batch->submissions()->with(['files', 'teacher.department'])->get()->keyBy('teacher_id');
+        $submissions = $batch->submissions()
+            ->with(['files:id,submission_id,file_name,file_path,file_size,file_type,gdrive_file_id,gdrive_view_link,gdrive_download_link,gdrive_synced_at'])
+            ->get()
+            ->keyBy('teacher_id');
 
         $submittedList = [];
         $notSubmittedList = [];
@@ -516,8 +539,8 @@ class SubmissionTrackingController extends Controller
                 'title' => $batch->title,
                 'category' => $batch->category,
                 'class_name' => $batch->schoolClass ? ($batch->schoolClass->name_bn ?: $batch->schoolClass->name_en) : 'সব ক্লাস (All Classes)',
-                'date_range' => $batch->start_date->format('d M') . ' - ' . $batch->end_date->format('d M Y'),
-                'deadline_display' => $batch->end_date->format('l, d F Y (রাত ১১:৫৯)'),
+                'date_range' => ($batch->start_date ? $batch->start_date->format('d M') : '') . ' - ' . ($batch->end_date ? $batch->end_date->format('d M Y') : ''),
+                'deadline_display' => $batch->end_date ? $batch->end_date->format('l, d F Y (রাত ১১:৫৯)') : '',
                 'gdrive_folder_url' => $batch->gdrive_folder_url,
             ],
             'generated_at' => now()->format('l, d F Y - h:i A'),
