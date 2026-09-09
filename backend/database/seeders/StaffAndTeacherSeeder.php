@@ -63,6 +63,30 @@ class StaffAndTeacherSeeder extends Seeder
         $artDept = $depts['ART'] ?? null;
         $admDept = $depts['ADM'] ?? null;
 
+        // Clean up any early prototype demo users (BSISC-179 to BSISC-184)
+        User::whereIn('email', [
+            'coordinator@bsisc.edu.bd',
+            'teacher1@bsisc.edu.bd',
+            'teacher2@bsisc.edu.bd',
+            'teacher3@bsisc.edu.bd',
+            'teacher4@bsisc.edu.bd',
+            'teacher5@bsisc.edu.bd',
+        ])->orWhereIn('phone', [
+            '01711000003',
+            '01711000004',
+            '01711000005',
+            '01711000006',
+            '01711000007',
+            '01711000008',
+        ])->orWhereIn('employee_id', [
+            'BSISC-179',
+            'BSISC-180',
+            'BSISC-181',
+            'BSISC-182',
+            'BSISC-183',
+            'BSISC-184',
+        ])->forceDelete();
+
         // 3. Ensure Super Admin Account
         $admin = User::updateOrCreate(
             ['email' => 'admin@bsisc.edu.bd'],
