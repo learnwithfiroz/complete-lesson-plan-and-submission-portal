@@ -87,23 +87,23 @@ class StaffAndTeacherSeeder extends Seeder
 
         $lines = explode("\n", trim(file_get_contents($tsvFile)));
         $usedEmails = ['admin@bsisc.edu.bd' => true];
+        $seededUserIds = [$admin->id];
 
-        $sl = 0;
+        $totalSeeded = 0;
         foreach ($lines as $index => $line) {
             $line = trim($line);
             if (empty($line)) continue;
 
             $parts = explode("\t", $line);
-            if (count($parts) < 5) continue;
+            if (count($parts) < 7) continue;
 
-            $sl++;
-            $empId = 'BSISC-' . str_pad($sl, 3, '0', STR_PAD_LEFT);
-
-            $fullName = trim($parts[0]);
-            $gender = trim($parts[1]);
-            $salutation = trim($parts[2]);
-            $designation = trim($parts[3]);
-            $mobile = trim($parts[4]);
+            $sl = (int)trim($parts[0]);
+            $empId = trim($parts[1]);
+            $fullName = trim($parts[2]);
+            $gender = trim($parts[3]);
+            $salutation = trim($parts[4]);
+            $designation = trim($parts[5]);
+            $mobile = trim($parts[6]);
 
             // Fix mobile number
             if ($mobile === '0' || empty($mobile)) {
@@ -191,7 +191,7 @@ class StaffAndTeacherSeeder extends Seeder
             }
 
             $counter = 1;
-            while (isset($usedEmails[$email]) && $email !== 'principal@bsisc.edu.bd') {
+            while (isset($usedEmails[$email]) && $email !== 'principal@bsisc.edu.bd' && $email !== 'admin@bsisc.edu.bd') {
                 $counter++;
                 $email = str_replace('@bsisc.edu.bd', $counter . '@bsisc.edu.bd', $baseEmail);
             }
@@ -200,8 +200,9 @@ class StaffAndTeacherSeeder extends Seeder
             // Password is their mobile number
             $passwordHash = Hash::make($mobile);
 
-            // Find existing user by phone or email
-            $user = User::where('phone', $mobile)
+            // Find existing user by phone, employee_id, or serial_number
+            $user = User::where('serial_number', $sl)
+                ->orWhere('phone', $mobile)
                 ->orWhere('email', $email)
                 ->first();
 
@@ -245,8 +246,27 @@ class StaffAndTeacherSeeder extends Seeder
 
             // Sync role
             $user->roles()->sync([$targetRoleId]);
+            $seededUserIds[] = $user->id;
+            $totalSeeded++;
         }
 
-        echo "Successfully seeded " . $sl . " BSISC faculty and staff with SL, EMP ID, departments, and credentials!\n";
+        // Delete any ghost / dummy users not in the official 178 list or super admin safely
+        $dummyUsers = User::whereNotIn('id', $seededUserIds)->get();
+        if ($dummyUsers->isNotEmpty()) {
+            $dummyIds = $dummyUsers->pluck('id')->toArray();
+            
+            \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            \App\Models\LessonPlan::whereIn('teacher_id', $dummyIds)->update(['teacher_id' => $admin->id]);
+            \App\Models\LessonPlan::whereIn('created_by', $dummyIds)->update(['created_by' => $admin->id]);
+            \App\Models\LessonPlan::whereIn('updated_by', $dummyIds)->update(['updated_by' => $admin->id]);
+            \App\Models\TeacherAssignment::whereIn('teacher_id', $dummyIds)->delete();
+            \App\Models\TeacherSubmission::whereIn('teacher_id', $dummyIds)->delete();
+            \Illuminate\Support\Facades\DB::table('role_user')->whereIn('user_id', $dummyIds)->delete();
+            \Illuminate\Support\Facades\DB::table('personal_access_tokens')->whereIn('tokenable_id', $dummyIds)->where('tokenable_type', 'App\\Models\\User')->delete();
+            User::whereIn('id', $dummyIds)->forceDelete();
+            \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        }
+
+        echo "Successfully seeded " . $totalSeeded . " BSISC faculty and staff with exact SL, EMP ID, departments, and removed any extra users!\n";
     }
 }

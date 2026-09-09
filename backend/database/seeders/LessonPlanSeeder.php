@@ -27,9 +27,9 @@ class LessonPlanSeeder extends Seeder
         $subject = Subject::where('code', 'MATH-09')->first() ?? Subject::first();
         $chapter = $subject?->chapters()->first();
 
-        $teacher = User::where('email', 'teacher1@bsisc.edu.bd')->first() ?? User::first();
-        $coordinator = User::where('email', 'coordinator@bsisc.edu.bd')->first() ?? User::first();
-        $principal = User::where('email', 'principal@bsisc.edu.bd')->first() ?? User::first();
+        $teacher = User::where('serial_number', 4)->first() ?? User::whereHas('roles', fn($q) => $q->where('name', 'teacher'))->first() ?? User::first();
+        $coordinator = User::where('serial_number', 2)->first() ?? User::whereHas('roles', fn($q) => $q->where('name', 'academic_coordinator'))->first() ?? User::first();
+        $principal = User::where('serial_number', 1)->first() ?? User::whereHas('roles', fn($q) => $q->where('name', 'principal'))->first() ?? User::first();
 
         if (!$year || !$class || !$subject || !$teacher) {
             return;

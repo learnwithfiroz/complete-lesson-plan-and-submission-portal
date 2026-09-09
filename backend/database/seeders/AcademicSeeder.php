@@ -108,9 +108,9 @@ class AcademicSeeder extends Seeder
         }
 
         // 6. Teacher Assignments
-        $t1 = User::where('email', 'teacher1@bsisc.edu.bd')->first(); // Math teacher
-        $t2 = User::where('email', 'teacher2@bsisc.edu.bd')->first(); // English teacher
-        $t3 = User::where('email', 'teacher3@bsisc.edu.bd')->first(); // Science teacher
+        $t1 = User::where('serial_number', 4)->first() ?? User::whereHas('roles', fn($q) => $q->where('name', 'teacher'))->first();
+        $t2 = User::where('serial_number', 5)->first() ?? User::whereHas('roles', fn($q) => $q->where('name', 'teacher'))->skip(1)->first();
+        $t3 = User::where('serial_number', 8)->first() ?? User::whereHas('roles', fn($q) => $q->where('name', 'teacher'))->skip(2)->first();
 
         if ($t1 && isset($subjectModels['MATH-09'])) {
             TeacherAssignment::updateOrCreate([
