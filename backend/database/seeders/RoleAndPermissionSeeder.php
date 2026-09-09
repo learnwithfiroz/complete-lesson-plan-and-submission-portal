@@ -77,8 +77,9 @@ class RoleAndPermissionSeeder extends Seeder
                 'display_name_en' => 'Principal / Head Teacher',
                 'description' => 'Institution head with full approval, review, and report viewing authority.',
                 'permissions' => [
-                    'users.view', 'academic.view', 'lesson_plans.view', 'lesson_plans.review',
-                    'lesson_plans.approve', 'lesson_plans.return', 'lesson_plans.reject',
+                    'users.view', 'academic.view', 'academic.manage', 'academic.assign_teachers',
+                    'lesson_plans.view', 'lesson_plans.create', 'lesson_plans.edit', 'lesson_plans.delete', 'lesson_plans.submit',
+                    'lesson_plans.review', 'lesson_plans.approve', 'lesson_plans.return', 'lesson_plans.reject',
                     'lesson_plans.archive', 'templates.view', 'templates.manage',
                     'reports.view', 'reports.export', 'settings.manage',
                     'notices.view', 'notices.create', 'notices.edit', 'notices.delete', 'notices.publish',
@@ -86,11 +87,12 @@ class RoleAndPermissionSeeder extends Seeder
             ],
             [
                 'name' => 'academic_coordinator',
-                'display_name_bn' => 'একাডেমিক সমন্বয়ক',
-                'display_name_en' => 'Academic Coordinator',
-                'description' => 'Department/Academic coordinator managing teachers and reviewing lesson plans.',
+                'display_name_bn' => 'একাডেমিক সমন্বয়ক ও ভাইস প্রিন্সিপাল',
+                'display_name_en' => 'Academic Coordinator & Vice Principal',
+                'description' => 'Department/Academic coordinator & Vice Principals managing teachers, reviewing, and submitting lesson plans.',
                 'permissions' => [
-                    'academic.view', 'academic.assign_teachers', 'lesson_plans.view',
+                    'users.view', 'academic.view', 'academic.assign_teachers',
+                    'lesson_plans.view', 'lesson_plans.create', 'lesson_plans.edit', 'lesson_plans.delete', 'lesson_plans.submit',
                     'lesson_plans.review', 'lesson_plans.approve', 'lesson_plans.return',
                     'lesson_plans.reject', 'templates.view', 'templates.manage',
                     'reports.view', 'reports.export',

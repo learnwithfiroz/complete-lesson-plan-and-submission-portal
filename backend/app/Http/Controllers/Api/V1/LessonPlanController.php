@@ -37,11 +37,17 @@ class LessonPlanController extends Controller
         // Role-based visibility
         if ($user->hasRole('teacher') && !$user->hasRole(['super_admin', 'principal', 'academic_coordinator'])) {
             $query->where('teacher_id', $user->id);
-        } elseif ($user->hasRole('academic_coordinator') && $user->department_id) {
-            $query->where(function ($q) use ($user) {
-                $q->where('department_id', $user->department_id)
-                  ->orWhere('teacher_id', $user->id);
-            });
+        } elseif ($user->hasRole('academic_coordinator')) {
+            $desigLower = strtolower($user->designation ?? '');
+            $isInstitutionLeadership = str_contains($desigLower, 'vp') || str_contains($desigLower, 'vice') || ($user->department && $user->department->code === 'ADM');
+            if ($request->boolean('my_plans')) {
+                $query->where('teacher_id', $user->id);
+            } elseif (!$isInstitutionLeadership && $user->department_id) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('department_id', $user->department_id)
+                      ->orWhere('teacher_id', $user->id);
+                });
+            }
         }
 
         // Filters

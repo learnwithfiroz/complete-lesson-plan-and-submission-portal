@@ -150,17 +150,23 @@ class StaffAndTeacherSeeder extends Seeder
             }
 
             // Role resolution
+            $assignedRoles = [];
             if ($mobile === '01516174063' || $fullName === 'FIROZ AHMED' || $email === 'admin@bsisc.edu.bd') {
-                $targetRoleId = $superAdminRole->id;
+                $assignedRoles = [$superAdminRole->id];
                 $email = 'admin@bsisc.edu.bd';
                 $deptId = $admDept?->id;
             } elseif (str_contains($desigLower, 'principal') && !str_contains($desigLower, 'vp') && !str_contains($desigLower, 'vice')) {
-                $targetRoleId = $principalRole->id;
+                $assignedRoles = [$principalRole->id];
                 $email = 'principal@bsisc.edu.bd';
                 $deptId = $admDept?->id;
-            } elseif (str_contains($desigLower, 'vp') || str_contains($desigLower, 'vice principal') || str_contains($desigLower, 'coordinator')) {
-                $targetRoleId = $coordRole->id;
+            } elseif (str_contains($desigLower, 'vp') || str_contains($desigLower, 'vice principal')) {
+                // Vice Principals submit lesson plans & manage curriculum oversight (both coordinator & teacher roles)
+                $assignedRoles = [$coordRole->id, $teacherRole->id];
                 $deptId = $admDept?->id;
+            } elseif (str_contains($desigLower, 'coordinator')) {
+                // Academic coordinators who also teach or manage
+                $assignedRoles = [$coordRole->id, $teacherRole->id];
+                $deptId = $deptId ?: $admDept?->id;
             } elseif (
                 str_contains($desigLower, 'teacher') ||
                 str_contains($desigLower, 'instructor') ||
@@ -168,7 +174,7 @@ class StaffAndTeacherSeeder extends Seeder
                 str_contains($desigLower, 'co-teacher') ||
                 str_contains($desigLower, 'lecturer')
             ) {
-                $targetRoleId = $teacherRole->id;
+                $assignedRoles = [$teacherRole->id];
             } elseif (
                 str_contains($desigLower, 'attendant') ||
                 str_contains($desigLower, 'driver') ||
@@ -183,10 +189,10 @@ class StaffAndTeacherSeeder extends Seeder
                 str_contains($desigLower, 'gardener') ||
                 str_contains($desigLower, 'caretaker')
             ) {
-                $targetRoleId = $supportStaffRole->id;
+                $assignedRoles = [$supportStaffRole->id];
                 $deptId = $admDept?->id;
             } else {
-                $targetRoleId = $staffRole->id;
+                $assignedRoles = [$staffRole->id];
                 $deptId = $admDept?->id;
             }
 
@@ -244,8 +250,8 @@ class StaffAndTeacherSeeder extends Seeder
                 ]);
             }
 
-            // Sync role
-            $user->roles()->sync([$targetRoleId]);
+            // Sync roles
+            $user->roles()->sync($assignedRoles);
             $seededUserIds[] = $user->id;
             $totalSeeded++;
         }
