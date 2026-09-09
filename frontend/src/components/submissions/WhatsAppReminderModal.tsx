@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Modal, Button, Form, Table, Badge, Row, Col, Card } from 'react-bootstrap';
 import { 
   MessageSquare, 
@@ -9,16 +9,21 @@ import {
   Square, 
   Phone, 
   Sparkles,
-  Info
+  Info,
+  Settings
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { 
   REMINDER_TEMPLATES, 
   renderReminderMessage, 
   openWhatsAppChat, 
   formatWhatsAppPhone,
   type ReminderTeacher, 
-  type ReminderBatchInfo 
+  type ReminderBatchInfo,
+  type MessageTemplate
 } from '../../utils/whatsappReminder';
+import { messageTemplatesApi } from '../../api/messageTemplates';
 import { toast } from 'react-toastify';
 
 interface Props {
@@ -34,6 +39,21 @@ export const WhatsAppReminderModal: React.FC<Props> = ({
   batch,
   missingTeachers,
 }) => {
+  // Fetch dynamic message templates from API
+  const { data: dynamicTemplates = [] } = useQuery<MessageTemplate[]>({
+    queryKey: ['message-templates'],
+    queryFn: () => messageTemplatesApi.getAll(),
+    enabled: show,
+    staleTime: 60000,
+  });
+
+  const availableTemplates = useMemo(() => {
+    if (dynamicTemplates && dynamicTemplates.length > 0) {
+      return dynamicTemplates;
+    }
+    return REMINDER_TEMPLATES;
+  }, [dynamicTemplates]);
+
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('bangla_standard');
   const [customText, setCustomText] = useState<string>(() => {
     return REMINDER_TEMPLATES[0].text;
@@ -42,8 +62,17 @@ export const WhatsAppReminderModal: React.FC<Props> = ({
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<Set<number>>(new Set());
   const [previewTeacherId, setPreviewTeacherId] = useState<number | null>(null);
 
+  // Auto-select default template or first template when templates load
+  useEffect(() => {
+    if (availableTemplates.length > 0) {
+      const defaultTpl = availableTemplates.find((t) => t.is_default) || availableTemplates[0];
+      setSelectedTemplateId(defaultTpl.id);
+      setCustomText(defaultTpl.text);
+    }
+  }, [availableTemplates]);
+
   // Initialize selected teachers when modal opens or missingTeachers changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (show) {
       const allIds = new Set(
         missingTeachers
@@ -61,7 +90,7 @@ export const WhatsAppReminderModal: React.FC<Props> = ({
   // Handle template switch
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
-    const found = REMINDER_TEMPLATES.find((t) => t.id === templateId);
+    const found = availableTemplates.find((t) => t.id === templateId);
     if (found) {
       setCustomText(found.text);
     }
@@ -226,15 +255,26 @@ export const WhatsAppReminderModal: React.FC<Props> = ({
               <Card.Body className="p-3">
                 {/* Template Preset Dropdown */}
                 <Form.Group className="mb-3">
-                  <Form.Label className="fw-semibold small mb-1">টেমপ্লেট সিলেক্ট করুন (Preset Templates):</Form.Label>
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <Form.Label className="fw-semibold small mb-0">টেমপ্লেট সিলেক্ট করুন (Preset Templates):</Form.Label>
+                    <Link
+                      to="/message-templates"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="small text-primary text-decoration-none d-flex align-items-center gap-1"
+                      style={{ fontSize: '0.75rem' }}
+                    >
+                      <Settings size={12} /> টেমপ্লেট সেটিংস
+                    </Link>
+                  </div>
                   <Form.Select
                     size="sm"
                     value={selectedTemplateId}
                     onChange={(e) => handleTemplateChange(e.target.value)}
                   >
-                    {REMINDER_TEMPLATES.map((tpl) => (
+                    {availableTemplates.map((tpl) => (
                       <option key={tpl.id} value={tpl.id}>
-                        {tpl.name}
+                        {tpl.name} {tpl.is_default ? '★ (Default)' : ''}
                       </option>
                     ))}
                   </Form.Select>

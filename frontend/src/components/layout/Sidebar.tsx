@@ -24,6 +24,7 @@ import {
   X,
   Smartphone,
   Download,
+  MessageSquare,
 } from 'lucide-react';
 import { usePwaInstall } from '../../hooks/usePwaInstall';
 
@@ -120,6 +121,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onCloseMobile }) => {
             Submission Tracking
           </NavLink>
         </li>
+
+        {/* WhatsApp & SMS Message Templates */}
+        {isAdminOrCoord && (
+          <li className="nav-item">
+            <NavLink
+              to="/message-templates"
+              className={({ isActive }) => `nav-link text-white d-flex align-items-center ${isActive ? 'bg-secondary fw-bold text-success' : 'opacity-75'}`}
+            >
+              <MessageSquare size={16} className="me-2 text-success" />
+              মেসেজ ও SMS টেমপ্লেট
+            </NavLink>
+          </li>
+        )}
 
         {/* Notice Board */}
         <li className="nav-item">

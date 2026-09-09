@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\LessonPlanController;
 use App\Http\Controllers\Api\V1\LessonPlanTemplateController;
+use App\Http\Controllers\Api\V1\MessageTemplateController;
 use App\Http\Controllers\Api\V1\NoticeController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProfileController;
@@ -195,5 +196,13 @@ Route::prefix('v1')->group(function () {
         Route::delete('/form-schemas/{formSchema}', [FormSchemaController::class, 'destroy']);
         Route::get('/form-schemas/{formSchema}/submissions', [FormSchemaController::class, 'submissions']);
         Route::patch('/form-submissions/{submission}/status', [FormSchemaController::class, 'updateSubmissionStatus']);
+
+        // WhatsApp & SMS Message Template Settings
+        Route::get('/message-templates', [MessageTemplateController::class, 'index']);
+        Route::post('/message-templates', [MessageTemplateController::class, 'store']);
+        Route::put('/message-templates/{id}', [MessageTemplateController::class, 'update']);
+        Route::delete('/message-templates/{id}', [MessageTemplateController::class, 'destroy']);
+        Route::post('/message-templates/reset', [MessageTemplateController::class, 'reset']);
+        Route::post('/message-templates/save-all', [MessageTemplateController::class, 'saveAll']);
     });
 });

@@ -32,7 +32,11 @@ export interface MessageTemplate {
   id: string;
   name: string;
   language: 'bn' | 'en';
+  category?: 'whatsapp' | 'sms' | 'whatsapp_sms' | 'general';
   text: string;
+  is_default?: boolean;
+  is_system?: boolean;
+  updated_at?: string;
 }
 
 export const REMINDER_TEMPLATES: MessageTemplate[] = [

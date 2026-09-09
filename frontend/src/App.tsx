@@ -52,6 +52,7 @@ const LessonPlanCalendar = lazyWithRetry(() => import('./pages/calendar/LessonPl
 const NoticeBoard = lazyWithRetry(() => import('./pages/notices/NoticeBoard').then(m => ({ default: m.NoticeBoard })));
 const SubmissionTracking = lazyWithRetry(() => import('./pages/submissions/SubmissionTracking').then(m => ({ default: m.SubmissionTracking })));
 const SubmissionBatchDetails = lazyWithRetry(() => import('./pages/submissions/SubmissionBatchDetails').then(m => ({ default: m.SubmissionBatchDetails })));
+const MessageTemplateSettings = lazyWithRetry(() => import('./pages/settings/MessageTemplateSettings').then(m => ({ default: m.MessageTemplateSettings })));
 
 // Academic Management Pages (Lazy Loaded with auto-retry)
 const AcademicYears = lazyWithRetry(() => import('./pages/academic/AcademicYears').then(m => ({ default: m.AcademicYears })));
@@ -99,6 +100,8 @@ export const App: React.FC = () => {
               {/* Submission Tracking Module */}
               <Route path="/submission-tracking" element={<SubmissionTracking />} />
               <Route path="/submission-tracking/:id" element={<SubmissionBatchDetails />} />
+              <Route path="/message-templates" element={<MessageTemplateSettings />} />
+              <Route path="/settings/message-templates" element={<MessageTemplateSettings />} />
 
               {/* Lesson Plans Module */}
               <Route path="/lesson-plans" element={<LessonPlanList />} />
