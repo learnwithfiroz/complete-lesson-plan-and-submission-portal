@@ -35,15 +35,19 @@ export const printOfficialSundayReport = (data: SundayReportData) => {
   const missingRows = data.not_submitted_teachers.length > 0
     ? data.not_submitted_teachers.map((t, idx) => `
       <tr>
-        <td style="text-align: center; color: #64748b; font-family: monospace;">${idx + 1}</td>
+        <td style="text-align: center; color: #64748b; font-family: monospace; font-weight: 600;">${idx + 1}</td>
         <td>
-          <strong style="color: #0f172a;">${t.name}</strong>
+          <strong style="color: #0f172a; font-size: 11.5px;">${t.name}</strong>
           ${t.salutation ? `<span style="color: #64748b; font-size: 11px;"> (${t.salutation})</span>` : ''}
         </td>
-        <td>${t.designation || 'Teacher'}</td>
-        <td><span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 11px; border: 1px solid #e2e8f0;">${t.department || 'General'}</span></td>
-        <td style="font-family: monospace; font-weight: bold; color: #dc2626;">${t.phone && t.phone !== '0' ? t.phone : 'N/A'}</td>
-        <td style="text-align: center;"><span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #fca5a5;">NOT SUBMITTED</span></td>
+        <td style="color: #334155;">${t.designation || 'Teacher'}</td>
+        <td><span style="background: #f8fafc; padding: 2px 7px; border-radius: 4px; font-size: 11px; border: 1px solid #e2e8f0; color: #475569;">${t.department || 'General'}</span></td>
+        <td style="font-family: monospace; font-weight: 700; color: #dc2626;">${t.phone && t.phone !== '0' ? t.phone : '<span style="color: #94a3b8; font-weight: normal;">N/A</span>'}</td>
+        <td style="text-align: center; white-space: nowrap; width: 130px;">
+          <span style="background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 4px; letter-spacing: 0.2px;">
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #ef4444;"></span>জমা দেননি (Pending)
+          </span>
+        </td>
       </tr>
     `).join('')
     : `
@@ -62,12 +66,25 @@ export const printOfficialSundayReport = (data: SundayReportData) => {
 
       return `
         <tr>
-          <td style="text-align: center; color: #64748b; font-family: monospace;">${idx + 1}</td>
-          <td><strong style="color: #0f172a;">${t.name}</strong></td>
-          <td>${t.designation} <span style="color: #64748b; font-size: 11px;">(${t.department})</span></td>
-          <td style="color: #475569; font-size: 11px; font-family: monospace;">${t.submitted_at || '—'}</td>
+          <td style="text-align: center; color: #64748b; font-family: monospace; font-weight: 600;">${idx + 1}</td>
+          <td>
+            <strong style="color: #0f172a; font-size: 11.5px;">${t.name}</strong>
+            ${t.salutation ? `<span style="color: #64748b; font-size: 11px;"> (${t.salutation})</span>` : ''}
+          </td>
+          <td>
+            <div>${t.designation || 'Teacher'}</div>
+            <span style="background: #f8fafc; padding: 1px 5px; border-radius: 3px; font-size: 10px; border: 1px solid #e2e8f0; color: #64748b;">${t.department || 'General'}</span>
+          </td>
+          <td style="font-family: monospace; color: #334155; font-size: 10.5px;">
+            <div>${t.submitted_at || '—'}</div>
+            ${t.last_updated_at && t.last_updated_at !== t.submitted_at ? `<div style="color: #2563eb; font-size: 9.5px;">আপডেট: ${t.last_updated_at}</div>` : ''}
+          </td>
           <td>${filesHtml}</td>
-          <td style="text-align: center;"><span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #86efac;">SUBMITTED</span></td>
+          <td style="text-align: center; white-space: nowrap; width: 110px;">
+            <span style="background: #f0fdf4; color: #15803d; border: 1px solid #86efac; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 4px;">
+              <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #22c55e;"></span>Submitted
+            </span>
+          </td>
         </tr>
       `;
     }).join('')

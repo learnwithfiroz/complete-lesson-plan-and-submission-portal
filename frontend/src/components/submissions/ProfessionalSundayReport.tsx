@@ -299,12 +299,13 @@ export const ProfessionalSundayReport: React.FC<Props> = ({ data, onPrint, onOpe
                         <span className="text-muted">N/A</span>
                       )}
                     </td>
-                    <td className="text-center">
+                    <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
                       <span 
-                        className="badge px-2 py-1"
-                        style={{ backgroundColor: '#fecaca', color: '#991b1b', border: '1px solid #f87171' }}
+                        className="badge rounded-pill px-2.5 py-1 fw-bold d-inline-flex align-items-center gap-1 shadow-xs"
+                        style={{ backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', fontSize: '0.78rem' }}
                       >
-                        Not Submitted
+                        <span className="spinner-grow spinner-grow-sm" style={{ width: 6, height: 6, backgroundColor: '#ef4444' }} />
+                        জমা দেননি (Pending)
                       </span>
                     </td>
                     <td className="text-center d-print-none">
