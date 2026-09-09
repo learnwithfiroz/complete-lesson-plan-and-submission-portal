@@ -139,19 +139,29 @@ class PublicFormController extends Controller
 
         // Process File Uploads if present
         $attachments = [];
+        $targetDir = "form_submissions/{$schema->form_type}/" . date('Y');
+        $targetFullPath = storage_path('app/public/' . $targetDir);
+        if (!file_exists($targetFullPath)) {
+            @mkdir($targetFullPath, 0755, true);
+        }
+
         if ($request->hasFile('attachments')) {
             $files = $request->file('attachments');
             if (is_array($files)) {
                 foreach ($files as $key => $file) {
                     if ($file->isValid()) {
-                        $storedPath = $file->store("form_submissions/{$schema->form_type}/" . date('Y'), 'public');
+                        $originalName = $file->getClientOriginalName();
+                        $filename = time() . '_' . $key . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $originalName);
+                        $file->move($targetFullPath, $filename);
+                        $storedPath = $targetDir . '/' . $filename;
+
                         $attachments[$key] = [
                             'field_key' => $key,
-                            'original_name' => $file->getClientOriginalName(),
+                            'original_name' => $originalName,
                             'file_path' => $storedPath,
                             'file_url' => asset('storage/' . $storedPath),
-                            'file_size' => $file->getSize(),
-                            'mime_type' => $file->getMimeType(),
+                            'file_size' => @filesize($targetFullPath . '/' . $filename) ?: $file->getSize(),
+                            'mime_type' => strtolower($file->getClientOriginalExtension() ?: pathinfo($originalName, PATHINFO_EXTENSION)),
                         ];
                     }
                 }
@@ -161,14 +171,18 @@ class PublicFormController extends Controller
         // Process individual named file fields
         foreach ($request->allFiles() as $fieldKey => $file) {
             if ($fieldKey !== 'attachments' && $file->isValid()) {
-                $storedPath = $file->store("form_submissions/{$schema->form_type}/" . date('Y'), 'public');
+                $originalName = $file->getClientOriginalName();
+                $filename = time() . '_' . $fieldKey . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $originalName);
+                $file->move($targetFullPath, $filename);
+                $storedPath = $targetDir . '/' . $filename;
+
                 $attachments[$fieldKey] = [
                     'field_key' => $fieldKey,
-                    'original_name' => $file->getClientOriginalName(),
+                    'original_name' => $originalName,
                     'file_path' => $storedPath,
                     'file_url' => asset('storage/' . $storedPath),
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
+                    'file_size' => @filesize($targetFullPath . '/' . $filename) ?: $file->getSize(),
+                    'mime_type' => strtolower($file->getClientOriginalExtension() ?: pathinfo($originalName, PATHINFO_EXTENSION)),
                 ];
                 $formData[$fieldKey] = asset('storage/' . $storedPath);
             }

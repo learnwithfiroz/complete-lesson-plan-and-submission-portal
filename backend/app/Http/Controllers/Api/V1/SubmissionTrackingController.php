@@ -339,15 +339,25 @@ class SubmissionTrackingController extends Controller
 
             $validated = $request->validate([
                 'files' => ['required', 'array', 'min:1'],
-                'files.*' => ['required', 'file', 'max:51200'], // 50MB max
                 'remarks' => ['nullable', 'string', 'max:1000'],
             ], [
                 'files.required' => 'অন্তত একটি ফাইল নির্বাচন করা আবশ্যক।',
                 'files.array' => 'ফাইল ফরম্যাট সঠিক নয়।',
                 'files.min' => 'অন্তত একটি ফাইল নির্বাচন করুন।',
-                'files.*.file' => 'আপলোড করা আইটেমটি সঠিক ফাইল হতে হবে।',
-                'files.*.max' => 'প্রতিটি ফাইলের সাইজ সর্বোচ্চ ৫০ মেগাবাইট (50MB) হতে পারবে।',
             ]);
+
+            if (!$request->hasFile('files')) {
+                return $this->errorResponse('কোনো ফাইল পাওয়া যায়নি।', 422);
+            }
+
+            foreach ($request->file('files') as $file) {
+                if (!$file->isValid()) {
+                    return $this->errorResponse('ফাইলের আপলোড ত্রুটিযুক্ত হয়েছে: ' . $file->getErrorMessage(), 422);
+                }
+                if ($file->getSize() > 52428800) { // 50MB
+                    return $this->errorResponse('প্রতিটি ফাইলের সাইজ সর্বোচ্চ ৫০ মেগাবাইট (50MB) হতে পারবে।', 422);
+                }
+            }
 
             return DB::transaction(function () use ($request, $batch, $user, $driveService) {
                 $submission = TeacherSubmission::firstOrCreate(
@@ -383,19 +393,25 @@ class SubmissionTrackingController extends Controller
 
                 $uploadedFiles = [];
                 $targetDir = "submissions/{$batch->id}/{$user->id}";
-                Storage::disk('public')->makeDirectory($targetDir);
+                $targetFullPath = storage_path('app/public/' . $targetDir);
+                if (!file_exists($targetFullPath)) {
+                    @mkdir($targetFullPath, 0755, true);
+                }
 
                 foreach ($request->file('files') as $file) {
                     $originalName = $file->getClientOriginalName();
                     $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $originalName);
-                    $path = $file->storeAs($targetDir, $filename, 'public');
+                    
+                    // Safe move without finfo requirement
+                    $file->move($targetFullPath, $filename);
+                    $path = $targetDir . '/' . $filename;
 
                     $subFile = SubmissionFile::create([
                         'submission_id' => $submission->id,
                         'file_path' => $path,
                         'file_name' => $originalName,
-                        'file_size' => $file->getSize(),
-                        'file_type' => $file->getClientOriginalExtension() ?: pathinfo($originalName, PATHINFO_EXTENSION),
+                        'file_size' => @filesize($targetFullPath . '/' . $filename) ?: $file->getSize(),
+                        'file_type' => strtolower($file->getClientOriginalExtension() ?: pathinfo($originalName, PATHINFO_EXTENSION)),
                     ]);
                     $uploadedFiles[] = $subFile;
                 }

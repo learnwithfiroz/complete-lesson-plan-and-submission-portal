@@ -151,10 +151,17 @@ class LessonPlanController extends Controller
         $data = $request->validated();
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
-            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
-            $path = $file->storeAs('lesson_plans', $filename, 'public');
-            $data['attachment_path'] = $path;
-            $data['attachment_name'] = $file->getClientOriginalName();
+            if ($file->isValid()) {
+                $originalName = $file->getClientOriginalName();
+                $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $originalName);
+                $targetFullPath = storage_path('app/public/lesson_plans');
+                if (!file_exists($targetFullPath)) {
+                    @mkdir($targetFullPath, 0755, true);
+                }
+                $file->move($targetFullPath, $filename);
+                $data['attachment_path'] = 'lesson_plans/' . $filename;
+                $data['attachment_name'] = $originalName;
+            }
         }
 
         $plan = $this->lessonPlanService->updateLessonPlan($lessonPlan, $data, $user);
@@ -172,17 +179,26 @@ class LessonPlanController extends Controller
             }
         }
 
-        $request->validate([
-            'file' => ['required', 'file', 'mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,jpeg,png', 'max:20480'],
-        ]);
+        if (!$request->hasFile('file') || !$request->file('file')->isValid()) {
+            return $this->errorResponse('সঠিক ফাইল আপলোড করুন।', 422);
+        }
 
         $file = $request->file('file');
-        $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
-        $path = $file->storeAs('lesson_plans', $filename, 'public');
+        if ($file->getSize() > 20971520) { // 20MB
+            return $this->errorResponse('ফাইল সাইজ সর্বোচ্চ ২০ মেগাবাইট (20MB) হতে পারবে।', 422);
+        }
+
+        $originalName = $file->getClientOriginalName();
+        $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $originalName);
+        $targetFullPath = storage_path('app/public/lesson_plans');
+        if (!file_exists($targetFullPath)) {
+            @mkdir($targetFullPath, 0755, true);
+        }
+        $file->move($targetFullPath, $filename);
 
         $lessonPlan->update([
-            'attachment_path' => $path,
-            'attachment_name' => $file->getClientOriginalName(),
+            'attachment_path' => 'lesson_plans/' . $filename,
+            'attachment_name' => $originalName,
         ]);
 
         $lessonPlan->load(['teacher', 'academicYear', 'term', 'schoolClass', 'section', 'subject', 'chapter', 'outcomes', 'activities']);

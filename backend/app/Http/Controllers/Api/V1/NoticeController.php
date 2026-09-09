@@ -120,16 +120,21 @@ class NoticeController extends Controller
             'is_published' => 'nullable|boolean',
             'publish_date' => 'nullable|date',
             'expiry_date' => 'nullable|date|after_or_equal:publish_date',
-            'attachment' => 'nullable|file|max:10240|mimes:pdf,doc,docx,jpg,jpeg,png,xls,xlsx',
         ]);
 
         $attachmentPath = null;
         $attachmentName = null;
 
-        if ($request->hasFile('attachment')) {
+        if ($request->hasFile('attachment') && $request->file('attachment')->isValid()) {
             $file = $request->file('attachment');
             $attachmentName = $file->getClientOriginalName();
-            $attachmentPath = $file->store('notices', 'public');
+            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $attachmentName);
+            $targetFullPath = storage_path('app/public/notices');
+            if (!file_exists($targetFullPath)) {
+                @mkdir($targetFullPath, 0755, true);
+            }
+            $file->move($targetFullPath, $filename);
+            $attachmentPath = 'notices/' . $filename;
         }
 
         $notice = Notice::create([
@@ -197,7 +202,6 @@ class NoticeController extends Controller
             'is_published' => 'nullable|boolean',
             'publish_date' => 'nullable|date',
             'expiry_date' => 'nullable|date|after_or_equal:publish_date',
-            'attachment' => 'nullable|file|max:10240|mimes:pdf,doc,docx,jpg,jpeg,png,xls,xlsx',
             'remove_attachment' => 'nullable|boolean',
         ]);
 
@@ -209,13 +213,19 @@ class NoticeController extends Controller
             $notice->attachment_name = null;
         }
 
-        if ($request->hasFile('attachment')) {
+        if ($request->hasFile('attachment') && $request->file('attachment')->isValid()) {
             if ($notice->attachment_path && Storage::disk('public')->exists($notice->attachment_path)) {
                 Storage::disk('public')->delete($notice->attachment_path);
             }
             $file = $request->file('attachment');
             $notice->attachment_name = $file->getClientOriginalName();
-            $notice->attachment_path = $file->store('notices', 'public');
+            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $notice->attachment_name);
+            $targetFullPath = storage_path('app/public/notices');
+            if (!file_exists($targetFullPath)) {
+                @mkdir($targetFullPath, 0755, true);
+            }
+            $file->move($targetFullPath, $filename);
+            $notice->attachment_path = 'notices/' . $filename;
         }
 
         $fields = [

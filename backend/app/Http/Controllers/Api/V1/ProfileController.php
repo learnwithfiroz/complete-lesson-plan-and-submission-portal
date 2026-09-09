@@ -50,23 +50,36 @@ class ProfileController extends Controller
 
     public function updateAvatar(Request $request): JsonResponse
     {
-        $request->validate([
-            'avatar' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:4096'],
-        ]);
-
         $user = $request->user();
 
-        if ($request->hasFile('avatar')) {
-            if ($user->avatar) {
-                $oldPath = str_replace('/storage/', '', $user->avatar);
-                if (Storage::disk('public')->exists($oldPath)) {
-                    Storage::disk('public')->delete($oldPath);
-                }
-            }
-
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $user->update(['avatar' => '/storage/' . $path]);
+        if (!$request->hasFile('avatar') || !$request->file('avatar')->isValid()) {
+            return $this->errorResponse('সঠিক ইমেজ ফাইল নির্বাচন করুন।', 422);
         }
+
+        $file = $request->file('avatar');
+        if ($file->getSize() > 4194304) { // 4MB
+            return $this->errorResponse('ছবির সাইজ সর্বোচ্চ ৪ মেগাবাইট (4MB) হতে পারবে।', 422);
+        }
+
+        $ext = strtolower($file->getClientOriginalExtension() ?: pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION));
+        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'])) {
+            return $this->errorResponse('অনুগ্রহ করে JPG, PNG বা WEBP ফরম্যাটের ছবি আপলোড করুন।', 422);
+        }
+
+        if ($user->avatar) {
+            $oldPath = str_replace('/storage/', '', $user->avatar);
+            if (Storage::disk('public')->exists($oldPath)) {
+                Storage::disk('public')->delete($oldPath);
+            }
+        }
+
+        $targetFullPath = storage_path('app/public/avatars');
+        if (!file_exists($targetFullPath)) {
+            @mkdir($targetFullPath, 0755, true);
+        }
+        $filename = 'avatar_' . $user->id . '_' . time() . '.' . $ext;
+        $file->move($targetFullPath, $filename);
+        $user->update(['avatar' => '/storage/avatars/' . $filename]);
 
         static::logActivity('Avatar Updated', User::class, $user->id);
 
