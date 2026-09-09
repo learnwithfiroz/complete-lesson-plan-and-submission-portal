@@ -4,68 +4,132 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\FormSchema;
+use App\Models\FormSubmission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class FormSchemaController extends Controller
 {
     /**
-     * List all form schemas (optional filter by form_type)
+     * Display a listing of form schemas.
      */
     public function index(Request $request): JsonResponse
     {
-        $query = FormSchema::with('creator:id,name,email');
+        $query = FormSchema::with('creator:id,name,email')
+            ->withCount('submissions');
 
-        if ($request->filled('form_type')) {
-            $query->where('form_type', $request->query('form_type'));
+        if ($request->filled('form_type') && $request->form_type !== 'all') {
+            $query->where('form_type', $request->form_type);
         }
 
-        $schemas = $query->orderBy('is_default', 'desc')
-                         ->orderBy('updated_at', 'desc')
-                         ->get();
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%")
+                  ->orWhere('slug', 'like', "%{$search}%");
+            });
+        }
+
+        $schemas = $query->orderByDesc('is_default')
+            ->orderByDesc('updated_at')
+            ->get();
 
         return response()->json([
             'success' => true,
-            'message' => 'Form schemas retrieved successfully.',
             'data' => $schemas,
         ]);
     }
 
     /**
-     * Get default schema by form_type (Public / Authenticated)
+     * Get default schema for a specific form type.
      */
     public function getDefault(string $formType = 'admission'): JsonResponse
     {
         $schema = FormSchema::where('form_type', $formType)
-                            ->where('is_default', true)
-                            ->first();
+            ->where('is_default', true)
+            ->first();
 
         if (!$schema) {
-            $schema = FormSchema::where('form_type', $formType)->first();
+            $schema = FormSchema::where('form_type', $formType)
+                ->latest()
+                ->first();
         }
 
         if (!$schema) {
             return response()->json([
                 'success' => false,
-                'message' => "No schema found for form type '{$formType}'.",
-                'data' => null,
+                'message' => 'No schema found for form type: ' . $formType,
             ], 404);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Default form schema retrieved.',
             'data' => $schema,
         ]);
     }
 
     /**
-     * Show a specific schema by ID
+     * Store a newly created form schema.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'form_type' => 'required|in:admission,job,tender',
+            'title' => 'required|string|max:255',
+            'slug' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'instructions' => 'nullable|string',
+            'is_default' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
+            'post_payment_action' => 'nullable|string',
+            'layout_style' => 'nullable|string|in:wizard,single_page,tabbed',
+            'deadline' => 'nullable|date',
+            'schema_data' => 'required|array',
+        ]);
+
+        $baseSlug = !empty($validated['slug']) ? Str::slug($validated['slug']) : (Str::slug($validated['title']) ?: $validated['form_type']);
+        $slug = $baseSlug;
+        $count = 1;
+        while (FormSchema::where('slug', $slug)->exists()) {
+            $slug = "{$baseSlug}-" . ($count++);
+        }
+
+        if (!empty($validated['is_default']) && $validated['is_default']) {
+            FormSchema::where('form_type', $validated['form_type'])->update(['is_default' => false]);
+        }
+
+        $schema = FormSchema::create([
+            'form_type' => $validated['form_type'],
+            'title' => $validated['title'],
+            'slug' => $slug,
+            'description' => $validated['description'] ?? null,
+            'instructions' => $validated['instructions'] ?? null,
+            'is_default' => $validated['is_default'] ?? false,
+            'is_active' => $validated['is_active'] ?? true,
+            'post_payment_action' => $validated['post_payment_action'] ?? 'application_voucher',
+            'layout_style' => $validated['layout_style'] ?? 'wizard',
+            'deadline' => !empty($validated['deadline']) ? $validated['deadline'] : null,
+            'schema_data' => $validated['schema_data'],
+            'created_by' => $request->user()?->id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Form schema saved successfully. Public link is active!',
+            'data' => $schema,
+            'share_url' => url('/forms/' . $schema->slug),
+        ], 201);
+    }
+
+    /**
+     * Display the specified form schema.
      */
     public function show(FormSchema $formSchema): JsonResponse
     {
         $formSchema->load('creator:id,name,email');
+        $formSchema->loadCount('submissions');
 
         return response()->json([
             'success' => true,
@@ -74,84 +138,80 @@ class FormSchemaController extends Controller
     }
 
     /**
-     * Store a new form schema
-     */
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'form_type' => 'required|string|in:admission,job,tender',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'is_default' => 'boolean',
-            'post_payment_action' => 'nullable|string',
-            'layout_style' => 'nullable|string|in:wizard,single_page,tabbed',
-            'schema_data' => 'required|array',
-        ]);
-
-        return DB::transaction(function () use ($validated, $request) {
-            if (!empty($validated['is_default'])) {
-                FormSchema::where('form_type', $validated['form_type'])->update(['is_default' => false]);
-            }
-
-            $schema = FormSchema::create([
-                'form_type' => $validated['form_type'],
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'is_default' => $validated['is_default'] ?? false,
-                'post_payment_action' => $validated['post_payment_action'] ?? 'application_voucher',
-                'layout_style' => $validated['layout_style'] ?? 'wizard',
-                'schema_data' => $validated['schema_data'],
-                'created_by' => $request->user()?->id,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Form schema created successfully.',
-                'data' => $schema,
-            ], 201);
-        });
-    }
-
-    /**
-     * Update an existing form schema
+     * Update the specified form schema.
      */
     public function update(Request $request, FormSchema $formSchema): JsonResponse
     {
         $validated = $request->validate([
+            'form_type' => 'sometimes|required|in:admission,job,tender',
             'title' => 'sometimes|required|string|max:255',
+            'slug' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'is_default' => 'boolean',
+            'instructions' => 'nullable|string',
+            'is_default' => 'nullable|boolean',
+            'is_active' => 'nullable|boolean',
             'post_payment_action' => 'nullable|string',
             'layout_style' => 'nullable|string|in:wizard,single_page,tabbed',
+            'deadline' => 'nullable|date',
             'schema_data' => 'sometimes|required|array',
         ]);
 
-        return DB::transaction(function () use ($validated, $formSchema) {
-            if (isset($validated['is_default']) && $validated['is_default']) {
-                FormSchema::where('form_type', $formSchema->form_type)
-                    ->where('id', '!=', $formSchema->id)
-                    ->update(['is_default' => false]);
+        if (!empty($validated['is_default']) && $validated['is_default']) {
+            FormSchema::where('form_type', $formSchema->form_type)
+                ->where('id', '!=', $formSchema->id)
+                ->update(['is_default' => false]);
+        }
+
+        if (!empty($validated['slug']) && $validated['slug'] !== $formSchema->slug) {
+            $baseSlug = Str::slug($validated['slug']);
+            $slug = $baseSlug;
+            $count = 1;
+            while (FormSchema::where('slug', $slug)->where('id', '!=', $formSchema->id)->exists()) {
+                $slug = "{$baseSlug}-" . ($count++);
             }
+            $formSchema->slug = $slug;
+        }
 
-            $formSchema->update($validated);
+        $fields = [
+            'form_type', 'title', 'description', 'instructions', 
+            'is_default', 'is_active', 'post_payment_action', 'layout_style', 
+            'deadline', 'schema_data'
+        ];
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Form schema updated successfully.',
-                'data' => $formSchema->fresh(),
-            ]);
-        });
+        foreach ($fields as $f) {
+            if ($request->has($f)) {
+                $formSchema->{$f} = $request->get($f);
+            }
+        }
+
+        $formSchema->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Form schema updated successfully.',
+            'data' => $formSchema,
+            'share_url' => url('/forms/' . $formSchema->slug),
+        ]);
     }
 
     /**
-     * Duplicate an existing form schema
+     * Duplicate an existing schema.
      */
-    public function duplicate(FormSchema $formSchema, Request $request): JsonResponse
+    public function duplicate(FormSchema $formSchema): JsonResponse
     {
+        $baseSlug = $formSchema->slug ? "{$formSchema->slug}-copy" : Str::slug($formSchema->title . ' Copy');
+        $slug = $baseSlug;
+        $count = 1;
+        while (FormSchema::where('slug', $slug)->exists()) {
+            $slug = "{$baseSlug}-" . ($count++);
+        }
+
         $newSchema = $formSchema->replicate();
-        $newSchema->title = $formSchema->title . ' (Copy - ' . date('d M Y H:i') . ')';
+        $newSchema->title = $formSchema->title . ' (Copy)';
+        $newSchema->slug = $slug;
         $newSchema->is_default = false;
-        $newSchema->created_by = $request->user()?->id;
+        $newSchema->submission_count = 0;
+        $newSchema->created_by = auth()->id();
         $newSchema->save();
 
         return response()->json([
@@ -162,22 +222,81 @@ class FormSchemaController extends Controller
     }
 
     /**
-     * Delete a form schema
+     * Remove the specified form schema.
      */
     public function destroy(FormSchema $formSchema): JsonResponse
     {
-        if ($formSchema->is_default) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Default form schema cannot be deleted. Please set another template as default first.',
-            ], 422);
-        }
-
         $formSchema->delete();
 
         return response()->json([
             'success' => true,
             'message' => 'Form schema deleted successfully.',
+        ]);
+    }
+
+    /**
+     * List all candidate submissions for a specific form schema (Admin)
+     */
+    public function submissions(Request $request, FormSchema $formSchema): JsonResponse
+    {
+        $query = FormSubmission::where('form_schema_id', $formSchema->id);
+
+        if ($request->filled('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('applicant_name', 'like', "%{$search}%")
+                  ->orWhere('tracking_number', 'like', "%{$search}%")
+                  ->orWhere('applicant_phone', 'like', "%{$search}%")
+                  ->orWhere('applicant_email', 'like', "%{$search}%");
+            });
+        }
+
+        $submissions = $query->orderByDesc('created_at')
+            ->paginate($request->get('per_page', 25));
+
+        return response()->json([
+            'success' => true,
+            'schema' => [
+                'id' => $formSchema->id,
+                'title' => $formSchema->title,
+                'form_type' => $formSchema->form_type,
+                'slug' => $formSchema->slug,
+                'submission_count' => $formSchema->submission_count,
+            ],
+            'data' => $submissions->items(),
+            'meta' => [
+                'current_page' => $submissions->currentPage(),
+                'last_page' => $submissions->lastPage(),
+                'per_page' => $submissions->perPage(),
+                'total' => $submissions->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Update candidate submission status (Approve/Reject/Admit)
+     */
+    public function updateSubmissionStatus(Request $request, FormSubmission $submission): JsonResponse
+    {
+        $validated = $request->validate([
+            'status' => 'required|in:pending,reviewed,shortlisted,approved,rejected,admitted',
+            'admin_notes' => 'nullable|string',
+        ]);
+
+        $submission->status = $validated['status'];
+        if ($request->has('admin_notes')) {
+            $submission->admin_notes = $validated['admin_notes'];
+        }
+        $submission->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'আবেদনটির স্ট্যাটাস সফলভাবে আপডেট করা হয়েছে। (Status updated)',
+            'data' => $submission,
         ]);
     }
 }

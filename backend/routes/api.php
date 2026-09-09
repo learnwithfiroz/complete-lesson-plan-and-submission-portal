@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\NoticeController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\FormSchemaController;
+use App\Http\Controllers\Api\V1\PublicFormController;
 use App\Http\Controllers\Api\V1\PublicSettingsController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RoleController;
@@ -27,6 +28,9 @@ Route::prefix('v1')->group(function () {
     // Public Endpoints
     Route::get('/settings/public', [PublicSettingsController::class, 'index']);
     Route::get('/form-schemas/default/{form_type?}', [FormSchemaController::class, 'getDefault']);
+    Route::get('/public/forms/{slug}', [PublicFormController::class, 'show']);
+    Route::post('/public/forms/{slug}/submit', [PublicFormController::class, 'submit']);
+    Route::get('/public/forms/track/{trackingNumber}', [PublicFormController::class, 'track']);
     Route::get('/system/status', [SystemDeployController::class, 'systemStatus']);
     Route::match(['get', 'post'], '/system/setup', [SystemDeployController::class, 'autoSetup']);
     Route::match(['get', 'post'], '/system/auto-migrate', [SystemDeployController::class, 'autoMigrate']);
@@ -182,5 +186,7 @@ Route::prefix('v1')->group(function () {
         Route::put('/form-schemas/{formSchema}', [FormSchemaController::class, 'update']);
         Route::post('/form-schemas/{formSchema}/duplicate', [FormSchemaController::class, 'duplicate']);
         Route::delete('/form-schemas/{formSchema}', [FormSchemaController::class, 'destroy']);
+        Route::get('/form-schemas/{formSchema}/submissions', [FormSchemaController::class, 'submissions']);
+        Route::patch('/form-submissions/{submission}/status', [FormSchemaController::class, 'updateSubmissionStatus']);
     });
 });

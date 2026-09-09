@@ -63,6 +63,10 @@ const DepartmentList = lazyWithRetry(() => import('./pages/departments/Departmen
 // Form Studio & Schema Builder (Lazy Loaded with auto-retry)
 const FormBuilderStudio = lazyWithRetry(() => import('./pages/form-builder/FormBuilderStudio').then(m => ({ default: m.FormBuilderStudio })));
 
+// Public Form & Candidate Portal (Lazy Loaded with auto-retry)
+const PublicFormView = lazyWithRetry(() => import('./pages/public/PublicFormView').then(m => ({ default: m.PublicFormView })));
+const ApplicationTracking = lazyWithRetry(() => import('./pages/public/ApplicationTracking').then(m => ({ default: m.ApplicationTracking })));
+
 // User & RBAC Management (Lazy Loaded with auto-retry)
 const UserList = lazyWithRetry(() => import('./pages/users/UserList').then(m => ({ default: m.UserList })));
 const RoleList = lazyWithRetry(() => import('./pages/users/RoleList').then(m => ({ default: m.RoleList })));
@@ -78,6 +82,12 @@ export const App: React.FC = () => {
             <Route path="/setup" element={<SystemSetup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* Public Form & Application Tracking Routes (No login required) */}
+            <Route path="/forms/:slug" element={<PublicFormView />} />
+            <Route path="/apply/:type" element={<PublicFormView />} />
+            <Route path="/track" element={<ApplicationTracking />} />
+            <Route path="/track/:trackingNumber" element={<ApplicationTracking />} />
 
             {/* Authenticated Application Routes */}
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
