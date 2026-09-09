@@ -327,4 +327,68 @@ class SystemDeployController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Sync updated PHP files from GitHub repository without needing terminal/exec
+     */
+    public function syncGithub(Request $request): JsonResponse
+    {
+        $branch = $request->input('branch', 'main');
+        $baseUrl = "https://raw.githubusercontent.com/learnwithfiroz/complete-lesson-plan-and-submission-portal/{$branch}/";
+
+        $files = [
+            'backend/app/Http/Controllers/Api/V1/SubmissionTrackingController.php',
+            'backend/app/Http/Controllers/Api/V1/LessonPlanController.php',
+            'backend/app/Http/Controllers/Api/V1/NoticeController.php',
+            'backend/app/Http/Controllers/Api/V1/ProfileController.php',
+            'backend/app/Http/Controllers/Api/V1/PublicFormController.php',
+            'backend/app/Http/Controllers/Api/V1/BulkImportController.php',
+            'backend/app/Http/Controllers/Api/V1/SystemDeployController.php',
+            'backend/app/Http/Requests/V1/LessonPlans/StoreLessonPlanRequest.php',
+            'backend/app/Http/Requests/V1/LessonPlans/UpdateLessonPlanRequest.php',
+            'backend/routes/api.php',
+        ];
+
+        $updated = [];
+        $failed = [];
+
+        $opts = [
+            'http' => [
+                'method' => 'GET',
+                'header' => "User-Agent: BSISC-Deployment-Agent\r\n",
+                'timeout' => 20,
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+        ];
+        $context = stream_context_create($opts);
+
+        foreach ($files as $fileRel) {
+            $url = $baseUrl . $fileRel;
+            $content = @file_get_contents($url, false, $context);
+
+            if ($content !== false && strlen($content) > 50) {
+                $localPath = base_path(str_replace('backend/', '', $fileRel));
+                File::ensureDirectoryExists(dirname($localPath));
+                File::put($localPath, $content);
+                $updated[] = $fileRel . ' (' . strlen($content) . ' bytes)';
+            } else {
+                $failed[] = $fileRel;
+            }
+        }
+
+        try {
+            Artisan::call('optimize:clear');
+        } catch (\Throwable $e) {}
+
+        return response()->json([
+            'success' => count($failed) === 0,
+            'message' => count($failed) === 0 ? 'All files synced from GitHub successfully!' : 'Some files failed to sync.',
+            'updated' => $updated,
+            'failed' => $failed,
+            'timestamp' => now()->toISOString(),
+        ]);
+    }
 }

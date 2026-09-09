@@ -34,6 +34,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/system/status', [SystemDeployController::class, 'systemStatus']);
     Route::match(['get', 'post'], '/system/setup', [SystemDeployController::class, 'autoSetup']);
     Route::match(['get', 'post'], '/system/auto-migrate', [SystemDeployController::class, 'autoMigrate']);
+    Route::match(['get', 'post'], '/system/sync-github', [SystemDeployController::class, 'syncGithub']);
     Route::match(['get', 'post'], '/system/backup-db', [SystemDeployController::class, 'backupDatabase']);
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:60,1');
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:20,1');
