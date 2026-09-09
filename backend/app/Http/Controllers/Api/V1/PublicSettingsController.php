@@ -40,6 +40,29 @@ class PublicSettingsController extends Controller
             'success' => true,
             'data' => $merged,
         ])->header('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+    }
 
+    public function clientInfo(Request $request): JsonResponse
+    {
+        $ip = $request->header('CF-Connecting-IP')
+            ?: $request->header('X-Forwarded-For')
+            ?: $request->header('X-Real-IP')
+            ?: $request->ip();
+
+        if (str_contains($ip, ',')) {
+            $ip = trim(explode(',', $ip)[0]);
+        }
+
+        $now = now()->setTimezone('Asia/Dhaka');
+
+        return response()->json([
+            'success' => true,
+            'ip' => $ip ?: '127.0.0.1',
+            'timezone' => 'Asia/Dhaka',
+            'bd_time_iso' => $now->toISOString(),
+            'bd_time_formatted' => $now->format('h:i:s A'),
+            'bd_date_formatted' => $now->format('d F Y'),
+            'timestamp' => $now->timestamp,
+        ]);
     }
 }

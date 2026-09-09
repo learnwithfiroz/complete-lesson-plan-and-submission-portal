@@ -6,6 +6,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from '../../locales/i18n';
 import { notificationsApi } from '../../api/notifications';
 import { usePwaInstall } from '../../hooks/usePwaInstall';
+import { LiveSystemBadge } from '../common/LiveSystemBadge';
 
 interface HeaderProps {
   onToggleSidebar?: () => void;
@@ -69,6 +70,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             <span className="badge bg-light text-dark border small">School: 1242</span>
             <span className="badge bg-light text-dark border small">College: 1760</span>
           </div>
+        </div>
+
+        {/* Real-time IP Address and Live BD Time Display */}
+        <div className="d-none d-md-flex mx-auto">
+          <LiveSystemBadge variant="header" />
         </div>
 
         <div className="d-flex align-items-center gap-1.5 gap-sm-2">

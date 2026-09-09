@@ -9,6 +9,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from '../../locales/i18n';
 import { usePwaInstall } from '../../hooks/usePwaInstall';
 import { PwaInstallModal } from '../../components/common/PwaInstallModal';
+import { LiveSystemBadge } from '../../components/common/LiveSystemBadge';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'অনুগ্রহ করে ইমেইল বা মোবাইল নম্বর দিন / Please enter Email or Mobile Number'),
@@ -45,11 +46,15 @@ export const Login: React.FC = () => {
     <div className="auth-page-wrapper">
       <div className="container py-4">
         
-        <div className="d-flex justify-content-end mb-3">
+        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <div className="flex-grow-1" style={{ maxWidth: '420px' }}>
+            <LiveSystemBadge variant="login" showDate={true} />
+          </div>
+
           <Button
             variant="outline-light"
             size="sm"
-            className="rounded-pill px-3 shadow-sm bg-white text-dark border-0 fw-semibold"
+            className="rounded-pill px-3 py-1.5 shadow-sm bg-white text-dark border-0 fw-semibold align-self-stretch align-self-sm-auto d-flex align-items-center justify-content-center"
             onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
           >
             {language === 'bn' ? '🌐 English' : '🌐 বাংলা'}

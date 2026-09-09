@@ -32,6 +32,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/public/forms/{slug}/submit', [PublicFormController::class, 'submit']);
     Route::get('/public/forms/track/{trackingNumber}', [PublicFormController::class, 'track']);
     Route::get('/system/status', [SystemDeployController::class, 'systemStatus']);
+    Route::get('/system/client-info', [PublicSettingsController::class, 'clientInfo']);
     Route::match(['get', 'post'], '/system/setup', [SystemDeployController::class, 'autoSetup']);
     Route::match(['get', 'post'], '/system/auto-migrate', [SystemDeployController::class, 'autoMigrate']);
     Route::match(['get', 'post'], '/system/sync-github', [SystemDeployController::class, 'syncGithub']);
