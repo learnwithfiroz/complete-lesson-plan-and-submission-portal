@@ -12,14 +12,47 @@ export interface PaginatedResponse<T> {
   };
 }
 
+/**
+ * Broadcast notice changes across all open tabs and UI components instantly
+ */
+export const broadcastNoticesUpdated = () => {
+  try {
+    window.dispatchEvent(new CustomEvent('notices-updated'));
+  } catch {
+    // ignore
+  }
+
+  try {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('bsisc_notices_channel');
+      channel.postMessage({ type: 'notices-updated', timestamp: Date.now() });
+      channel.close();
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    localStorage.setItem('bsisc_notices_last_update', Date.now().toString());
+  } catch {
+    // ignore
+  }
+};
+
 export const noticeApi = {
   getNotices: async (params?: NoticeListParams): Promise<PaginatedResponse<Notice>> => {
-    const res = await apiClient.get('/api/v1/notices', { params });
+    const res = await apiClient.get('/api/v1/notices', {
+      params: { ...params, _t: Date.now() },
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+    });
     return res.data;
   },
 
   getLiveTicker: async (): Promise<{ success: boolean; data: Notice[] }> => {
-    const res = await apiClient.get('/api/v1/notices/live-ticker');
+    const res = await apiClient.get('/api/v1/notices/live-ticker', {
+      params: { _t: Date.now() },
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+    });
     return res.data;
   },
 
@@ -32,6 +65,7 @@ export const noticeApi = {
     const res = await apiClient.post('/api/v1/notices', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    broadcastNoticesUpdated();
     return res.data;
   },
 
@@ -39,21 +73,25 @@ export const noticeApi = {
     const res = await apiClient.post(`/api/v1/notices/${id}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    broadcastNoticesUpdated();
     return res.data;
   },
 
   deleteNotice: async (id: number): Promise<{ success: boolean; message: string }> => {
     const res = await apiClient.delete(`/api/v1/notices/${id}`);
+    broadcastNoticesUpdated();
     return res.data;
   },
 
   togglePin: async (id: number): Promise<{ success: boolean; message: string; data: { is_pinned: boolean } }> => {
     const res = await apiClient.patch(`/api/v1/notices/${id}/toggle-pin`);
+    broadcastNoticesUpdated();
     return res.data;
   },
 
   togglePublish: async (id: number): Promise<{ success: boolean; message: string; data: { is_published: boolean } }> => {
     const res = await apiClient.patch(`/api/v1/notices/${id}/toggle-publish`);
+    broadcastNoticesUpdated();
     return res.data;
   },
 

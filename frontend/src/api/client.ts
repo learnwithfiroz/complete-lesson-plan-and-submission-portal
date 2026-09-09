@@ -58,16 +58,21 @@ apiClient.interceptors.response.use(
       url.includes('/form-schemas/default');
 
     if (status === 401) {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_user');
+      // ONLY trigger session expiry redirect if the primary user profile/auth endpoint fails
+      const isCoreAuthEndpoint = url.includes('/api/v1/user') || url.includes('/api/v1/profile');
+      
+      if (isCoreAuthEndpoint) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
 
-      if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/login')) {
-        toast.error('Session expired. Please log in again.');
-        window.location.href = '/login';
+        if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/login')) {
+          toast.error('Session expired. Please log in again.');
+          window.location.href = '/login';
+        }
       }
     } else if (status === 403) {
       if (!isBackgroundPoll) {
-        toast.error(errorData?.message || 'Access denied: You lack sufficient permissions.');
+        toast.warning(errorData?.message || 'Access restricted: You lack permission for this feature.');
       }
     } else if (status === 422) {
       const firstError = errorData?.errors ? Object.values(errorData.errors)[0]?.[0] : null;
@@ -82,9 +87,14 @@ apiClient.interceptors.response.use(
 
     if (!isBackgroundPoll) {
       if (status && status >= 500) {
-        toast.error('A server error occurred. Please contact system support.');
+        // Prevent repeated 500 toast storms
+        toast.error(errorData?.message || 'A server error occurred. Please contact system support.', {
+          toastId: 'server-error-single',
+        });
       } else if (error.message === 'Network Error') {
-        toast.error('Network connection error. Please check your internet connection.');
+        toast.error('Network connection error. Please check your internet connection.', {
+          toastId: 'network-error-single',
+        });
       }
     }
 

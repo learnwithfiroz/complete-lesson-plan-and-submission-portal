@@ -17,14 +17,45 @@ export const NoticeTicker: React.FC = () => {
 
   useEffect(() => {
     loadTicker();
-    const interval = setInterval(loadTicker, 15000); // refresh every 15s
+    const interval = setInterval(loadTicker, 10000); // Fast live poll every 10s
+
     const handleUpdate = () => {
       loadTicker();
     };
+
+    // 1. Same-tab custom event
     window.addEventListener('notices-updated', handleUpdate);
+
+    // 2. Cross-tab BroadcastChannel
+    let broadcastChannel: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        broadcastChannel = new BroadcastChannel('bsisc_notices_channel');
+        broadcastChannel.onmessage = (event) => {
+          if (event.data?.type === 'notices-updated') {
+            loadTicker();
+          }
+        };
+      }
+    } catch {
+      // fallback to storage
+    }
+
+    // 3. Storage event fallback
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'bsisc_notices_last_update') {
+        loadTicker();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('notices-updated', handleUpdate);
+      window.removeEventListener('storage', handleStorage);
+      if (broadcastChannel) {
+        broadcastChannel.close();
+      }
     };
   }, []);
 

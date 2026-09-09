@@ -76,41 +76,38 @@ class NoticeController extends Controller
     public function liveTicker(Request $request): JsonResponse
     {
         $user = $request->user();
-        $cacheKey = 'live_ticker_notices_' . ($user ? $user->id : 'public');
 
-        $notices = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60, function () use ($user) {
+        $query = Notice::active()
+            ->forAudience($user)
+            ->where(function ($q) {
+                $q->where('is_pinned', true)
+                  ->orWhere('priority', 'urgent')
+                  ->orWhere('priority', 'high');
+            })
+            ->pinnedFirst()
+            ->limit(10)
+            ->get([
+                'id', 'title_bn', 'title_en', 'category', 'priority', 
+                'is_pinned', 'publish_date', 'created_at'
+            ]);
+
+        if ($query->isEmpty()) {
             $query = Notice::active()
                 ->forAudience($user)
-                ->where(function ($q) {
-                    $q->where('is_pinned', true)
-                      ->orWhere('priority', 'urgent')
-                      ->orWhere('priority', 'high');
-                })
-                ->pinnedFirst()
-                ->limit(10)
+                ->orderByDesc('created_at')
+                ->limit(5)
                 ->get([
                     'id', 'title_bn', 'title_en', 'category', 'priority', 
                     'is_pinned', 'publish_date', 'created_at'
                 ]);
-
-            if ($query->isEmpty()) {
-                $query = Notice::active()
-                    ->forAudience($user)
-                    ->orderByDesc('created_at')
-                    ->limit(5)
-                    ->get([
-                        'id', 'title_bn', 'title_en', 'category', 'priority', 
-                        'is_pinned', 'publish_date', 'created_at'
-                    ]);
-            }
-
-            return $query;
-        });
+        }
 
         return response()->json([
             'success' => true,
-            'data' => $notices,
-        ])->header('Cache-Control', 'private, max-age=30');
+            'data' => $query,
+        ])->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+          ->header('Pragma', 'no-cache')
+          ->header('Expires', '0');
     }
 
 

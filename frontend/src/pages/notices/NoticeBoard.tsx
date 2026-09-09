@@ -93,14 +93,22 @@ export const NoticeBoard: React.FC = () => {
 
   const handleDelete = async () => {
     if (!deleteNoticeId) return;
+    const targetId = deleteNoticeId;
+
+    // Optimistic UI state update
+    setNotices((prev) => prev.filter((n) => n.id !== targetId));
+    setTotalRecords((prev) => Math.max(0, prev - 1));
+    setDeleteNoticeId(null);
+    window.dispatchEvent(new CustomEvent('notices-updated'));
+
     try {
-      await noticeApi.deleteNotice(deleteNoticeId);
+      await noticeApi.deleteNotice(targetId);
       toast.success(t('notices.deleted_success', 'Notice deleted successfully'));
-      setDeleteNoticeId(null);
       window.dispatchEvent(new CustomEvent('notices-updated'));
       loadNotices();
     } catch {
       toast.error('Failed to delete notice');
+      loadNotices();
     }
   };
 

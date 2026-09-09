@@ -11,11 +11,11 @@ class TeacherAssignmentResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'teacher' => new UserResource($this->whenLoaded('teacher')),
-            'academic_year' => new AcademicYearResource($this->whenLoaded('academicYear')),
-            'school_class' => new SchoolClassResource($this->whenLoaded('schoolClass')),
-            'section' => new SectionResource($this->whenLoaded('section')),
-            'subject' => new SubjectResource($this->whenLoaded('subject')),
+            'teacher' => $this->whenLoaded('teacher', fn() => $this->teacher ? new UserResource($this->teacher) : null),
+            'academic_year' => $this->whenLoaded('academicYear', fn() => $this->academicYear ? new AcademicYearResource($this->academicYear) : null),
+            'school_class' => $this->whenLoaded('schoolClass', fn() => $this->schoolClass ? new SchoolClassResource($this->schoolClass) : null),
+            'section' => $this->whenLoaded('section', fn() => $this->section ? new SectionResource($this->section) : null),
+            'subject' => $this->whenLoaded('subject', fn() => $this->subject ? new SubjectResource($this->subject) : null),
             'created_at' => $this->created_at?->toISOString(),
         ];
     }

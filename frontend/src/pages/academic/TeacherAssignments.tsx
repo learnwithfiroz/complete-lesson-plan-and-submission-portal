@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { UserPlus, UserCheck, Trash2 } from 'lucide-react';
 import { academicApi } from '../../api/academic';
 import { usersApi } from '../../api/users';
+import { useAuthStore } from '../../store/authStore';
 import { LoadingSpinner } from '../../components/feedback/LoadingSpinner';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { toast } from 'react-toastify';
@@ -11,6 +12,9 @@ import type { TeacherAssignment } from '../../types/academic';
 
 export const TeacherAssignments: React.FC = () => {
   const queryClient = useQueryClient();
+  const { hasRole } = useAuthStore();
+  const canManage = hasRole(['super_admin', 'principal', 'academic_coordinator']);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; assignment: TeacherAssignment | null }>({
     show: false,
@@ -29,17 +33,21 @@ export const TeacherAssignments: React.FC = () => {
   const { data: assignmentsData, isLoading } = useQuery({
     queryKey: ['teacherAssignments'],
     queryFn: () => academicApi.getAssignments(),
+    retry: 1,
   });
 
-  // Supporting Dropdown Queries
+  // Supporting Dropdown Queries (only enabled for admin/coordinators)
   const { data: teachersData } = useQuery({
     queryKey: ['teachersList'],
-    queryFn: () => usersApi.getUsers({ role: 'teacher', per_page: 50 }),
+    queryFn: () => usersApi.getUsers({ role: 'teacher', per_page: 100 }),
+    enabled: canManage,
+    retry: false,
   });
 
   const { data: yearsData } = useQuery({
     queryKey: ['academicYears'],
     queryFn: () => academicApi.getAcademicYears(),
+    retry: 1,
   });
 
   const { data: classesData } = useQuery({
