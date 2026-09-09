@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Card, Button, Row, Col, Badge, Modal, Form, InputGroup } from 'react-bootstrap';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit2, UserCheck, Shield, Award, Search, BookOpen } from 'lucide-react';
+import { Plus, Trash2, Edit2, UserCheck, Shield, Award, Search, BookOpen, Calculator, Layers } from 'lucide-react';
 import { academicApi } from '../../api/academic';
 import { LoadingSpinner } from '../../components/feedback/LoadingSpinner';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
@@ -11,6 +11,7 @@ import type { SchoolClass, Section } from '../../types/academic';
 export const ClassesSections: React.FC = () => {
   const queryClient = useQueryClient();
   const [selectedVersion, setSelectedVersion] = useState<string>('all');
+  const [selectedLevel, setSelectedLevel] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   const [classModal, setClassModal] = useState(false);
@@ -47,6 +48,10 @@ export const ClassesSections: React.FC = () => {
     name_en: '',
     numeric_value: 1,
     version: 'English Medium',
+    academic_level: 'Primary',
+    level_code: '',
+    order_no: 1,
+    grading_scale: 'Category 4v3: 0-44=F(0), 45-59=D(1), 60-69=C(2), 70-79=B(3), 80-89=A(4), 90+=A+(5)',
     is_active: true,
   });
 
@@ -122,6 +127,10 @@ export const ClassesSections: React.FC = () => {
       name_en: '',
       numeric_value: 1,
       version: 'English Medium',
+      academic_level: 'Primary',
+      level_code: '',
+      order_no: (classesData?.data?.length || 0) + 1,
+      grading_scale: 'Category 4v3: 0-44=F(0), 45-59=D(1), 60-69=C(2), 70-79=B(3), 80-89=A(4), 90+=A+(5)',
       is_active: true,
     });
     setClassModal(true);
@@ -134,6 +143,10 @@ export const ClassesSections: React.FC = () => {
       name_en: c.name_en,
       numeric_value: c.numeric_value,
       version: c.version || 'English Medium',
+      academic_level: c.academic_level || 'Primary',
+      level_code: c.level_code || '',
+      order_no: c.order_no || 1,
+      grading_scale: c.grading_scale || '',
       is_active: c.is_active,
     });
     setClassModal(true);
@@ -173,39 +186,53 @@ export const ClassesSections: React.FC = () => {
 
   const filteredClasses = useMemo(() => {
     if (!classesData?.data) return [];
-    return classesData.data.filter((c) => {
-      // Version filter
-      if (selectedVersion === 'em' && c.version !== 'English Medium') return false;
-      if (selectedVersion === 'ev' && c.version !== 'English Version') return false;
+    return classesData.data
+      .filter((c) => {
+        // Version filter
+        if (selectedVersion === 'em' && c.version !== 'English Medium') return false;
+        if (selectedVersion === 'ev' && c.version !== 'English Version') return false;
 
-      // Search filter
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase();
-        const matchClassName =
-          c.name_en.toLowerCase().includes(q) ||
-          c.name_bn.toLowerCase().includes(q) ||
-          (c.version && c.version.toLowerCase().includes(q));
+        // Level filter
+        if (selectedLevel === 'primary' && c.academic_level !== 'Primary') return false;
+        if (selectedLevel === 'high' && c.academic_level !== 'High') return false;
+        if (selectedLevel === 'college' && c.academic_level !== 'College') return false;
 
-        const matchSections = c.sections?.some(
-          (s) =>
-            s.name_en.toLowerCase().includes(q) ||
-            s.name_bn.toLowerCase().includes(q) ||
-            (s.class_teacher_name && s.class_teacher_name.toLowerCase().includes(q)) ||
-            (s.coordinator_name && s.coordinator_name.toLowerCase().includes(q)) ||
-            (s.vp_name && s.vp_name.toLowerCase().includes(q)) ||
-            (s.group_name && s.group_name.toLowerCase().includes(q)) ||
-            (s.shift && s.shift.toLowerCase().includes(q))
-        );
+        // Search filter
+        if (searchTerm.trim()) {
+          const q = searchTerm.toLowerCase();
+          const matchClassName =
+            c.name_en.toLowerCase().includes(q) ||
+            c.name_bn.toLowerCase().includes(q) ||
+            (c.version && c.version.toLowerCase().includes(q)) ||
+            (c.academic_level && c.academic_level.toLowerCase().includes(q)) ||
+            (c.grading_scale && c.grading_scale.toLowerCase().includes(q));
 
-        return matchClassName || matchSections;
-      }
-      return true;
-    });
-  }, [classesData, selectedVersion, searchTerm]);
+          const matchSections = c.sections?.some(
+            (s) =>
+              s.name_en.toLowerCase().includes(q) ||
+              s.name_bn.toLowerCase().includes(q) ||
+              (s.class_teacher_name && s.class_teacher_name.toLowerCase().includes(q)) ||
+              (s.coordinator_name && s.coordinator_name.toLowerCase().includes(q)) ||
+              (s.vp_name && s.vp_name.toLowerCase().includes(q)) ||
+              (s.group_name && s.group_name.toLowerCase().includes(q)) ||
+              (s.shift && s.shift.toLowerCase().includes(q))
+          );
+
+          return matchClassName || matchSections;
+        }
+        return true;
+      })
+      .sort((a, b) => (a.order_no || a.numeric_value) - (b.order_no || b.numeric_value));
+  }, [classesData, selectedVersion, selectedLevel, searchTerm]);
 
   const totalClassesCount = classesData?.data?.length || 0;
   const emClassesCount = classesData?.data?.filter((c) => c.version === 'English Medium').length || 0;
   const evClassesCount = classesData?.data?.filter((c) => c.version === 'English Version').length || 0;
+
+  const primaryCount = classesData?.data?.filter((c) => c.academic_level === 'Primary').length || 0;
+  const highCount = classesData?.data?.filter((c) => c.academic_level === 'High').length || 0;
+  const collegeCount = classesData?.data?.filter((c) => c.academic_level === 'College').length || 0;
+
   const totalSectionsCount = classesData?.data?.reduce((acc, c) => acc + (c.sections?.length || 0), 0) || 0;
 
   return (
@@ -214,7 +241,7 @@ export const ClassesSections: React.FC = () => {
       <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
         <div>
           <h2 className="fs-5 fw-bold text-dark mb-1">
-            শ্রেণি, শাখা ও শিক্ষক দায়িত্ব বণ্টন (Classes, Sections & Class Teachers)
+            শ্রেণি, শাখা ও গ্রেডিং স্কেল ব্যবস্থাপনা (Classes, Sections & Grading Scales)
           </h2>
           <p className="text-muted fs-7 mb-0">
             বারিধারা স্কলার্স ইন্টারন্যাশনাল স্কুল অ্যান্ড কলেজ (BSISC) | মোট শ্রেণি: <strong>{totalClassesCount}</strong> টি, মোট শাখা: <strong>{totalSectionsCount}</strong> টি
@@ -234,13 +261,15 @@ export const ClassesSections: React.FC = () => {
       {/* Filter and Search Bar */}
       <Card className="border-0 shadow-sm rounded-4 mb-4">
         <Card.Body className="p-3">
-          <Row className="g-2 align-items-center justify-content-between">
-            <Col xs={12} md={6} lg={5}>
-              <div className="d-flex align-items-center gap-2">
+          <div className="d-flex flex-column gap-2.5">
+            {/* Row 1: Medium / Version Filter */}
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+              <div className="d-flex flex-wrap align-items-center gap-1.5">
+                <span className="fs-8 fw-bold text-secondary me-1">মাধ্যম:</span>
                 <Button
                   variant={selectedVersion === 'all' ? 'dark' : 'outline-secondary'}
                   size="sm"
-                  className="rounded-pill px-3 fw-semibold fs-7 flex-shrink-0"
+                  className="rounded-pill px-3 fw-semibold fs-7"
                   onClick={() => setSelectedVersion('all')}
                 >
                   সকল শ্রেণি ({totalClassesCount})
@@ -248,7 +277,7 @@ export const ClassesSections: React.FC = () => {
                 <Button
                   variant={selectedVersion === 'em' ? 'primary' : 'outline-secondary'}
                   size="sm"
-                  className="rounded-pill px-3 fw-semibold fs-7 flex-shrink-0"
+                  className="rounded-pill px-3 fw-semibold fs-7"
                   onClick={() => setSelectedVersion('em')}
                 >
                   🇬🇧 English Medium ({emClassesCount})
@@ -256,33 +285,71 @@ export const ClassesSections: React.FC = () => {
                 <Button
                   variant={selectedVersion === 'ev' ? 'success' : 'outline-secondary'}
                   size="sm"
-                  className="rounded-pill px-3 fw-semibold fs-7 flex-shrink-0"
+                  className="rounded-pill px-3 fw-semibold fs-7"
                   onClick={() => setSelectedVersion('ev')}
                 >
                   🇧🇩 English Version ({evClassesCount})
                 </Button>
               </div>
-            </Col>
 
-            <Col xs={12} md={6} lg={4}>
-              <InputGroup size="sm">
-                <InputGroup.Text className="bg-white border-end-0 text-muted">
-                  <Search size={14} />
-                </InputGroup.Text>
-                <Form.Control
-                  placeholder="শ্রেণি, শাখা, শ্রেণি শিক্ষক, সমন্বয়ক দিয়ে খুঁজুন..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="border-start-0 fs-7"
-                />
-                {searchTerm && (
-                  <Button variant="outline-secondary" size="sm" onClick={() => setSearchTerm('')}>
-                    মুছুন
-                  </Button>
-                )}
-              </InputGroup>
-            </Col>
-          </Row>
+              {/* Search Box */}
+              <div style={{ minWidth: '260px', flex: '1', maxWidth: '380px' }}>
+                <InputGroup size="sm">
+                  <InputGroup.Text className="bg-white border-end-0 text-muted">
+                    <Search size={14} />
+                  </InputGroup.Text>
+                  <Form.Control
+                    placeholder="শ্রেণি, শাখা, শ্রেণি শিক্ষক, গ্রেডিং..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="border-start-0 fs-7"
+                  />
+                  {searchTerm && (
+                    <Button variant="outline-secondary" size="sm" onClick={() => setSearchTerm('')}>
+                      মুছুন
+                    </Button>
+                  )}
+                </InputGroup>
+              </div>
+            </div>
+
+            {/* Row 2: Level / Stage Filter (Primary, High, College) */}
+            <div className="d-flex flex-wrap align-items-center gap-1.5 pt-2 border-top">
+              <span className="fs-8 fw-bold text-secondary me-1">একাডেমিক স্তর:</span>
+              <Button
+                variant={selectedLevel === 'all' ? 'secondary' : 'outline-secondary'}
+                size="sm"
+                className="rounded-pill px-2.5 py-0.5 fs-8"
+                onClick={() => setSelectedLevel('all')}
+              >
+                সকল স্তর ({totalClassesCount})
+              </Button>
+              <Button
+                variant={selectedLevel === 'primary' ? 'warning' : 'outline-secondary'}
+                size="sm"
+                className={`rounded-pill px-2.5 py-0.5 fs-8 ${selectedLevel === 'primary' ? 'text-dark fw-bold' : ''}`}
+                onClick={() => setSelectedLevel('primary')}
+              >
+                🏫 Primary ({primaryCount})
+              </Button>
+              <Button
+                variant={selectedLevel === 'high' ? 'info' : 'outline-secondary'}
+                size="sm"
+                className={`rounded-pill px-2.5 py-0.5 fs-8 ${selectedLevel === 'high' ? 'text-dark fw-bold' : ''}`}
+                onClick={() => setSelectedLevel('high')}
+              >
+                🏛️ High School ({highCount})
+              </Button>
+              <Button
+                variant={selectedLevel === 'college' ? 'danger' : 'outline-secondary'}
+                size="sm"
+                className="rounded-pill px-2.5 py-0.5 fs-8"
+                onClick={() => setSelectedLevel('college')}
+              >
+                🎓 College / HSC ({collegeCount})
+              </Button>
+            </div>
+          </div>
         </Card.Body>
       </Card>
 
@@ -292,7 +359,7 @@ export const ClassesSections: React.FC = () => {
       ) : filteredClasses.length === 0 ? (
         <Card className="border-0 shadow-sm rounded-4 p-5 text-center">
           <BookOpen size={48} className="text-muted mx-auto mb-3 opacity-50" />
-          <h5 className="fw-bold text-dark">কোন শ্রেণি বা শাখা পাওয়া যায়নি</h5>
+          <h5 className="fw-bold text-dark">কোন শ্রেণি বা শাখা পাওয়া যায়নি</h5>
           <p className="text-muted fs-7">অনুসন্ধান বা ফিল্টার পরিবর্তন করে পুনরায় চেষ্টা করুন।</p>
         </Card>
       ) : (
@@ -300,56 +367,90 @@ export const ClassesSections: React.FC = () => {
           {filteredClasses.map((c) => (
             <Col key={c.id} xs={12} lg={6} xl={6}>
               <Card className="border-0 shadow-sm rounded-4 h-100 overflow-hidden">
-                <Card.Header className="bg-light border-bottom p-3 d-flex align-items-center justify-content-between">
-                  <div className="d-flex align-items-center gap-2">
-                    <div
-                      className="avatar-circle fw-bold text-white shadow-xs"
-                      style={{
-                        backgroundColor: c.version === 'English Version' ? '#0d6938' : '#0f2e5a',
-                        width: '36px',
-                        height: '36px',
-                        fontSize: '0.85rem',
-                      }}
-                    >
-                      {c.name_en.substring(0, 3)}
-                    </div>
-                    <div>
-                      <div className="d-flex align-items-center gap-1.5 flex-wrap">
-                        <h5 className="fs-6 fw-bold mb-0 text-dark">{c.name_en}</h5>
-                        <Badge
-                          bg={c.version === 'English Version' ? 'success' : 'primary'}
-                          className="fs-9 fw-semibold px-2 py-0.5"
-                        >
-                          {c.version || 'English Medium'}
-                        </Badge>
+                <Card.Header className="bg-light border-bottom p-3">
+                  <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
+                    <div className="d-flex align-items-center gap-2">
+                      <div
+                        className="avatar-circle fw-bold text-white shadow-xs flex-shrink-0"
+                        style={{
+                          backgroundColor: c.version === 'English Version' ? '#0d6938' : '#0f2e5a',
+                          width: '38px',
+                          height: '38px',
+                          fontSize: '0.85rem',
+                        }}
+                      >
+                        #{c.order_no || c.numeric_value}
                       </div>
-                      <small className="text-muted fs-8">{c.name_bn}</small>
+                      <div>
+                        <div className="d-flex align-items-center gap-1.5 flex-wrap">
+                          <h5 className="fs-6 fw-bold mb-0 text-dark">{c.name_en}</h5>
+                          <Badge
+                            bg={c.version === 'English Version' ? 'success' : 'primary'}
+                            className="fs-9 fw-semibold px-2 py-0.5"
+                          >
+                            {c.version || 'English Medium'}
+                          </Badge>
+                          {c.academic_level && (
+                            <Badge
+                              bg={
+                                c.academic_level === 'Primary'
+                                  ? 'warning-subtle'
+                                  : c.academic_level === 'College'
+                                  ? 'danger-subtle'
+                                  : 'info-subtle'
+                              }
+                              className={`fs-9 px-1.5 py-0.5 border ${
+                                c.academic_level === 'Primary'
+                                  ? 'text-warning-emphasis'
+                                  : c.academic_level === 'College'
+                                  ? 'text-danger-emphasis'
+                                  : 'text-info-emphasis'
+                              }`}
+                            >
+                              <Layers size={10} className="me-1" />
+                              {c.academic_level} {c.level_code ? `(${c.level_code})` : ''}
+                            </Badge>
+                          )}
+                        </div>
+                        <small className="text-muted fs-8">{c.name_bn}</small>
+                      </div>
+                    </div>
+
+                    <div className="d-flex align-items-center gap-1">
+                      <Badge bg="light" text="dark" className="border fw-semibold px-2 py-1 me-1 fs-8">
+                        {c.sections?.length || 0} টি শাখা
+                      </Badge>
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        className="p-1 px-1.5 fs-8"
+                        title="শ্রেণি সম্পাদনা"
+                        onClick={() => handleOpenEditClass(c)}
+                      >
+                        <Edit2 size={13} />
+                      </Button>
+                      <Button
+                        variant="outline-danger"
+                        size="sm"
+                        className="p-1 px-1.5 fs-8"
+                        title="শ্রেণি মুছে ফেলুন"
+                        onClick={() => setDeleteClassConfirm({ show: true, classItem: c })}
+                      >
+                        <Trash2 size={13} />
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="d-flex align-items-center gap-1">
-                    <Badge bg="light" text="dark" className="border fw-semibold px-2 py-1 me-1 fs-8">
-                      {c.sections?.length || 0} টি শাখা
-                    </Badge>
-                    <Button
-                      variant="outline-primary"
-                      size="sm"
-                      className="p-1 px-1.5 fs-8"
-                      title="শ্রেণি সম্পাদনা"
-                      onClick={() => handleOpenEditClass(c)}
-                    >
-                      <Edit2 size={13} />
-                    </Button>
-                    <Button
-                      variant="outline-danger"
-                      size="sm"
-                      className="p-1 px-1.5 fs-8"
-                      title="শ্রেণি মুছে ফেলুন"
-                      onClick={() => setDeleteClassConfirm({ show: true, classItem: c })}
-                    >
-                      <Trash2 size={13} />
-                    </Button>
-                  </div>
+                  {/* Grading Scale Row */}
+                  {c.grading_scale && (
+                    <div className="bg-white p-2 rounded-2 border border-light-subtle d-flex align-items-center gap-1.5 fs-8 text-secondary">
+                      <Calculator size={13} className="text-primary flex-shrink-0" />
+                      <span className="fw-semibold text-dark flex-shrink-0">গ্রেডিং নীতি:</span>
+                      <span className="text-truncate font-monospace fs-9" title={c.grading_scale}>
+                        {c.grading_scale}
+                      </span>
+                    </div>
+                  )}
                 </Card.Header>
 
                 <Card.Body className="p-3">
@@ -463,48 +564,111 @@ export const ClassesSections: React.FC = () => {
       )}
 
       {/* Add / Edit Class Modal */}
-      <Modal show={classModal} onHide={() => { setClassModal(false); setEditingClass(null); }} centered>
+      <Modal show={classModal} onHide={() => { setClassModal(false); setEditingClass(null); }} size="lg" centered>
         <Modal.Header closeButton className="bg-light">
           <Modal.Title className="fs-6 fw-bold">
-            {editingClass ? 'শ্রেণির তথ্য সম্পাদনা' : 'নতুন শ্রেণি তৈরি করুন'}
+            {editingClass ? 'শ্রেণি ও গ্রেডিং পলিসি সম্পাদনা' : 'নতুন শ্রেণি ও গ্রেডিং পলিসি তৈরি করুন'}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4">
-          <Form.Group className="mb-3">
-            <Form.Label className="fs-7 fw-semibold">ভার্সন / মাধ্যম (Version)</Form.Label>
-            <Form.Select
-              value={classForm.version}
-              onChange={(e) => setClassForm({ ...classForm, version: e.target.value })}
-            >
-              <option value="English Medium">English Medium</option>
-              <option value="English Version">English Version</option>
-            </Form.Select>
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label className="fs-7 fw-semibold">শ্রেণির নাম (English, যেমন Std-III / Class-III)</Form.Label>
-            <Form.Control
-              type="text"
-              value={classForm.name_en}
-              onChange={(e) => setClassForm({ ...classForm, name_en: e.target.value })}
-              required
-            />
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label className="fs-7 fw-semibold">শ্রেণির নাম (বাংলা)</Form.Label>
-            <Form.Control
-              type="text"
-              value={classForm.name_bn}
-              onChange={(e) => setClassForm({ ...classForm, name_bn: e.target.value })}
-            />
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label className="fs-7 fw-semibold">ক্রমিক নম্বর (Numeric Value: 0-12)</Form.Label>
-            <Form.Control
-              type="number"
-              value={classForm.numeric_value}
-              onChange={(e) => setClassForm({ ...classForm, numeric_value: Number(e.target.value) })}
-            />
-          </Form.Group>
+          <Row className="g-3">
+            <Col md={6}>
+              <Form.Group>
+                <Form.Label className="fs-7 fw-semibold">ভার্সন / মাধ্যম (Version)</Form.Label>
+                <Form.Select
+                  value={classForm.version}
+                  onChange={(e) => setClassForm({ ...classForm, version: e.target.value })}
+                >
+                  <option value="English Medium">English Medium</option>
+                  <option value="English Version">English Version</option>
+                </Form.Select>
+              </Form.Group>
+            </Col>
+
+            <Col md={6}>
+              <Form.Group>
+                <Form.Label className="fs-7 fw-semibold">একাডেমিক স্তর (Level)</Form.Label>
+                <Form.Select
+                  value={classForm.academic_level}
+                  onChange={(e) => setClassForm({ ...classForm, academic_level: e.target.value })}
+                >
+                  <option value="Primary">Primary (প্রাথমিক)</option>
+                  <option value="High">High School (মাধ্যমিক)</option>
+                  <option value="College">College / HSC (উচ্চমাধ্যমিক)</option>
+                </Form.Select>
+              </Form.Group>
+            </Col>
+
+            <Col md={6}>
+              <Form.Group>
+                <Form.Label className="fs-7 fw-semibold">শ্রেণির নাম (English, যেমন Std-III / Class-III)</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={classForm.name_en}
+                  onChange={(e) => setClassForm({ ...classForm, name_en: e.target.value })}
+                  required
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={6}>
+              <Form.Group>
+                <Form.Label className="fs-7 fw-semibold">শ্রেণির নাম (বাংলা)</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={classForm.name_bn}
+                  onChange={(e) => setClassForm({ ...classForm, name_bn: e.target.value })}
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label className="fs-7 fw-semibold">ক্রমিক নম্বর (Order No)</Form.Label>
+                <Form.Control
+                  type="number"
+                  value={classForm.order_no}
+                  onChange={(e) => setClassForm({ ...classForm, order_no: Number(e.target.value) })}
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label className="fs-7 fw-semibold">লেভেল কোড (Level Code)</Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder="যেমন 84, 97, 116"
+                  value={classForm.level_code}
+                  onChange={(e) => setClassForm({ ...classForm, level_code: e.target.value })}
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={4}>
+              <Form.Group>
+                <Form.Label className="fs-7 fw-semibold">সংখ্যাগত মান (Numeric 0-12)</Form.Label>
+                <Form.Control
+                  type="number"
+                  value={classForm.numeric_value}
+                  onChange={(e) => setClassForm({ ...classForm, numeric_value: Number(e.target.value) })}
+                />
+              </Form.Group>
+            </Col>
+
+            <Col xs={12}>
+              <Form.Group>
+                <Form.Label className="fs-7 fw-semibold">গ্রেডিং স্কেল / পলিসি (Grading Scale)</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  value={classForm.grading_scale}
+                  onChange={(e) => setClassForm({ ...classForm, grading_scale: e.target.value })}
+                  placeholder="যেমন Category 4v3: 0-44=F(0), 45-59=D(1), 60-69=C(2), 70-79=B(3), 80-89=A(4), 90+=A+(5)"
+                />
+              </Form.Group>
+            </Col>
+          </Row>
         </Modal.Body>
         <Modal.Footer className="bg-light">
           <Button variant="secondary" size="sm" onClick={() => { setClassModal(false); setEditingClass(null); }}>

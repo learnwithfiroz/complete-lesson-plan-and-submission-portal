@@ -72,6 +72,10 @@ export interface SchoolClass {
   name_en: string;
   numeric_value: number;
   version?: string;
+  academic_level?: string;
+  level_code?: string;
+  order_no?: number;
+  grading_scale?: string;
   is_active: boolean;
   sections?: Section[];
   subjects?: Subject[];

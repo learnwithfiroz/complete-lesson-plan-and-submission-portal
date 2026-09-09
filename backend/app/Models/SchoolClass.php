@@ -11,7 +11,17 @@ class SchoolClass extends Model
     use HasFactory;
 
     protected $table = 'classes';
-    protected $fillable = ['name_bn', 'name_en', 'numeric_value', 'version', 'is_active'];
+    protected $fillable = [
+        'name_bn',
+        'name_en',
+        'numeric_value',
+        'version',
+        'academic_level',
+        'level_code',
+        'order_no',
+        'grading_scale',
+        'is_active',
+    ];
     protected $casts = ['is_active' => 'boolean'];
 
     public function sections(): HasMany
