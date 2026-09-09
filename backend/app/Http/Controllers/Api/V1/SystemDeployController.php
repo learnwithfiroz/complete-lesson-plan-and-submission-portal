@@ -237,4 +237,94 @@ class SystemDeployController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Export complete database SQL dump for backup and live-to-local synchronization
+     */
+    public function backupDatabase(Request $request)
+    {
+        try {
+            $tables = [
+                'roles',
+                'permissions',
+                'permission_role',
+                'departments',
+                'users',
+                'role_user',
+                'academic_years',
+                'terms',
+                'classes',
+                'sections',
+                'subjects',
+                'chapters',
+                'teacher_assignments',
+                'lesson_plans',
+                'lesson_plan_outcomes',
+                'lesson_plan_activities',
+                'lesson_plan_reviews',
+                'lesson_plan_status_histories',
+                'lesson_plan_templates',
+                'notices',
+                'submission_batches',
+                'teacher_submissions',
+                'submission_files',
+                'settings',
+                'form_schemas',
+                'form_submissions',
+                'audit_logs',
+            ];
+
+            $sql = "-- BSISC Lesson Plan Portal Live Database Backup\n";
+            $sql .= "-- Exported on: " . date('Y-m-d H:i:s') . "\n";
+            $sql .= "-- Host: " . config('app.url') . "\n\n";
+            $sql .= "SET FOREIGN_KEY_CHECKS = 0;\n\n";
+
+            foreach ($tables as $table) {
+                if (!Schema::hasTable($table)) continue;
+
+                $count = DB::table($table)->count();
+                $sql .= "-- Table: {$table} ({$count} records)\n";
+                $sql .= "TRUNCATE TABLE `{$table}`;\n";
+
+                if ($count > 0) {
+                    $rows = DB::table($table)->get();
+                    foreach ($rows as $row) {
+                        $rowArray = (array)$row;
+                        $columns = array_map(fn($c) => "`$c`", array_keys($rowArray));
+                        $values = array_map(function ($val) {
+                            if (is_null($val)) return 'NULL';
+                            return "'" . addslashes((string)$val) . "'";
+                        }, array_values($rowArray));
+
+                        $sql .= "INSERT INTO `{$table}` (" . implode(', ', $columns) . ") VALUES (" . implode(', ', $values) . ");\n";
+                    }
+                }
+                $sql .= "\n";
+            }
+
+            $sql .= "SET FOREIGN_KEY_CHECKS = 1;\n";
+
+            if ($request->query('download') === '1' || $request->input('download') === true) {
+                $filename = 'bsisc_live_backup_' . date('Y_m_d_His') . '.sql';
+                return response($sql, 200, [
+                    'Content-Type' => 'application/sql',
+                    'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Live database backup generated successfully.',
+                'generated_at' => date('Y-m-d H:i:s'),
+                'size_bytes' => strlen($sql),
+                'sql' => $sql,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Database backup failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Backup failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
