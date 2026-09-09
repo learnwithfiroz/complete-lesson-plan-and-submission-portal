@@ -14,9 +14,10 @@ class StoreClassRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name_bn' => ['required', 'string', 'max:100'],
+            'name_bn' => ['nullable', 'string', 'max:100'],
             'name_en' => ['required', 'string', 'max:100'],
-            'numeric_value' => ['required', 'integer', 'min:1', 'max:12'],
+            'numeric_value' => ['required', 'integer', 'min:0', 'max:12'],
+            'version' => ['nullable', 'string', 'max:50'],
             'is_active' => ['boolean'],
         ];
     }

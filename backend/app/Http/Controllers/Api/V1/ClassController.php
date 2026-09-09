@@ -26,9 +26,10 @@ class ClassController extends Controller
         $cacheKey = 'classes_list_' . ($activeOnly ? 'active' : 'all');
 
         $classes = Cache::remember($cacheKey, 60, function () use ($activeOnly) {
-            $query = SchoolClass::with(['sections', 'subjects.department'])
+            $query = SchoolClass::with(['sections.classTeacher', 'subjects.department'])
                 ->withCount(['sections', 'subjects'])
-                ->orderBy('numeric_value');
+                ->orderBy('numeric_value')
+                ->orderBy('name_en');
 
             if ($activeOnly) {
                 $query->where('is_active', true);

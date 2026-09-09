@@ -11,11 +11,30 @@ class Section extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['class_id', 'name_bn', 'name_en', 'capacity'];
+    protected $fillable = [
+        'class_id',
+        'name_bn',
+        'name_en',
+        'capacity',
+        'version',
+        'shift',
+        'shift_time',
+        'group_name',
+        'order_no',
+        'class_teacher_id',
+        'class_teacher_name',
+        'coordinator_name',
+        'vp_name',
+    ];
 
     public function schoolClass(): BelongsTo
     {
         return $this->belongsTo(SchoolClass::class, 'class_id');
+    }
+
+    public function classTeacher(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'class_teacher_id');
     }
 
     public function assignments(): HasMany

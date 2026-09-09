@@ -27,6 +27,22 @@ export interface Section {
   name_bn: string;
   name_en: string;
   capacity?: number;
+  version?: string;
+  shift?: string;
+  shift_time?: string;
+  group_name?: string;
+  order_no?: number;
+  class_teacher_id?: number | null;
+  class_teacher_name?: string | null;
+  coordinator_name?: string | null;
+  vp_name?: string | null;
+  class_teacher?: {
+    id: number;
+    name: string;
+    email: string;
+    phone?: string;
+    employee_id?: string;
+  } | null;
 }
 
 export interface Chapter {
@@ -55,6 +71,7 @@ export interface SchoolClass {
   name_bn: string;
   name_en: string;
   numeric_value: number;
+  version?: string;
   is_active: boolean;
   sections?: Section[];
   subjects?: Subject[];

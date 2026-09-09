@@ -14,6 +14,7 @@ class SchoolClassResource extends JsonResource
             'name_bn' => $this->name_bn,
             'name_en' => $this->name_en,
             'numeric_value' => $this->numeric_value,
+            'version' => $this->version,
             'is_active' => (bool)$this->is_active,
             'sections' => SectionResource::collection($this->whenLoaded('sections')),
             'subjects' => SubjectResource::collection($this->whenLoaded('subjects')),
