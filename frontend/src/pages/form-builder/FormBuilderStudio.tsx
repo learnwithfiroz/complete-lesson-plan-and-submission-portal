@@ -284,7 +284,9 @@ export const FormBuilderStudio: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Failed to save schema', err);
-      toast.error(err?.response?.data?.message || 'ফরম স্কিমা সেভ করতে সমস্যা হয়েছে।');
+      if (err?.response?.status !== 401) {
+        toast.error(err?.response?.data?.message || 'ফরম স্কিমা সেভ করতে সমস্যা হয়েছে।');
+      }
     } finally {
       setSaving(false);
     }

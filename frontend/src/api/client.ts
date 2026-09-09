@@ -58,16 +58,23 @@ apiClient.interceptors.response.use(
       url.includes('/form-schemas/default');
 
     if (status === 401) {
-      // ONLY trigger session expiry redirect if the primary user profile/auth endpoint fails
-      const isCoreAuthEndpoint = url.includes('/api/v1/user') || url.includes('/api/v1/profile');
-      
-      if (isCoreAuthEndpoint) {
+      const publicPaths = ['/login', '/forms', '/f/', '/track', '/setup', '/forgot-password', '/reset-password'];
+      const isPublicPage = publicPaths.some((p) => window.location.pathname.startsWith(p));
+
+      if (!isPublicPage) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
 
-        if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/login')) {
-          toast.error('Session expired. Please log in again.');
-          window.location.href = '/login';
+        const lastExpiryToast = sessionStorage.getItem('last_expiry_toast');
+        const now = Date.now();
+        if (!lastExpiryToast || now - parseInt(lastExpiryToast, 10) > 10000) {
+          sessionStorage.setItem('last_expiry_toast', now.toString());
+          toast.info('আপনার সেশনের মেয়াদ শেষ হয়েছে। অনুগ্রহ করে পুনরায় লগইন করুন।', {
+            toastId: 'session-expired-info',
+          });
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 500);
         }
       }
     } else if (status === 403) {

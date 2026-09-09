@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     // Public Endpoints
     Route::get('/settings/public', [PublicSettingsController::class, 'index']);
+    Route::get('/form-schemas', [FormSchemaController::class, 'index']);
     Route::get('/form-schemas/default/{form_type?}', [FormSchemaController::class, 'getDefault']);
     Route::get('/public/forms/{slug}', [PublicFormController::class, 'show']);
     Route::post('/public/forms/{slug}/submit', [PublicFormController::class, 'submit']);
