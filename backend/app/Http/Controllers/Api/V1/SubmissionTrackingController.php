@@ -8,13 +8,12 @@ use App\Models\SubmissionBatch;
 use App\Models\SubmissionFile;
 use App\Models\TeacherSubmission;
 use App\Models\User;
-use App\Services\GoogleDriveService;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class SubmissionTrackingController extends Controller
 {
@@ -144,7 +143,7 @@ class SubmissionTrackingController extends Controller
         }
     }
 
-    public function store(Request $request, GoogleDriveService $driveService): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'category' => ['required', 'in:lesson_plan,assignment,question'],
@@ -168,25 +167,13 @@ class SubmissionTrackingController extends Controller
             'created_by' => $request->user()->id,
         ]);
 
-        // Create initial Google Drive folder for this batch
-        try {
-            $driveFolder = $driveService->createOrGetFolder($batch->title);
-            if ($driveFolder) {
-                $batch->update([
-                    'gdrive_folder_id' => $driveFolder['id'],
-                    'gdrive_folder_url' => $driveFolder['webViewLink'],
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::warning('Drive batch folder creation error: ' . $e->getMessage());
-        }
-
         return $this->successResponse($batch, 'নতুন ব্যাচ সফলভাবে তৈরি হয়েছে।', 201);
     }
 
-    public function show(Request $request, SubmissionBatch $batch): JsonResponse
+    public function show(Request $request, $batchId): JsonResponse
     {
         $user = $request->user();
+        $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::findOrFail($batchId);
         $batch->load(['schoolClass:id,name_bn,name_en', 'creator:id,name']);
 
         $isAdmin = $user && $user->hasAnyRole(['super_admin', 'principal', 'academic_coordinator']);
@@ -308,8 +295,9 @@ class SubmissionTrackingController extends Controller
         ]);
     }
 
-    public function toggleActive(SubmissionBatch $batch): JsonResponse
+    public function toggleActive($batchId): JsonResponse
     {
+        $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::findOrFail($batchId);
         $batch->update([
             'is_active' => !$batch->is_active,
         ]);
@@ -318,13 +306,51 @@ class SubmissionTrackingController extends Controller
         return $this->successResponse($batch, "ব্যাচ স্ট্যাটাস পরিবর্তন করে {$statusText} করা হয়েছে।");
     }
 
-    public function destroy(SubmissionBatch $batch): JsonResponse
+    public function destroy(Request $request, $batchId): JsonResponse
     {
-        $batch->delete();
-        return $this->successResponse(null, 'ব্যাচ সফলভাবে ডিলিট করা হয়েছে।');
+        try {
+            $user = $request->user();
+            $isAdmin = $user && $user->hasAnyRole(['super_admin', 'principal', 'academic_coordinator']);
+            if (!$isAdmin) {
+                return $this->errorResponse('আপনার এই ব্যাচটি মুছে ফেলার অনুমতি নেই।', 403);
+            }
+
+            $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::find($batchId);
+            if (!$batch) {
+                return $this->errorResponse('ব্যাচটি পাওয়া যায়নি বা ইতিমধ্যে মুছে ফেলা হয়েছে।', 404);
+            }
+
+            // Clean up files on storage
+            $submissions = $batch->submissions()->with('files')->get();
+            foreach ($submissions as $sub) {
+                foreach ($sub->files as $f) {
+                    if ($f->file_path) {
+                        $localPath = storage_path('app/public/' . $f->file_path);
+                        if (file_exists($localPath)) {
+                            @unlink($localPath);
+                        }
+                    }
+                }
+            }
+
+            // Remove batch folder if exists
+            $batchDir = storage_path("app/public/submissions/{$batch->id}");
+            if (is_dir($batchDir)) {
+                @File::deleteDirectory($batchDir);
+            }
+
+            $batch->delete();
+
+            return $this->successResponse(null, 'ব্যাচ সফলভাবে ডিলিট করা হয়েছে।');
+        } catch (\Throwable $e) {
+            Log::error('Delete Batch Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->errorResponse('ব্যাচ মোছা সম্ভব হয়নি: ' . $e->getMessage(), 500);
+        }
     }
 
-    public function submitFiles(Request $request, SubmissionBatch $batch, GoogleDriveService $driveService): JsonResponse
+    public function submitFiles(Request $request, $batchId): JsonResponse
     {
         try {
             $user = $request->user();
@@ -332,6 +358,8 @@ class SubmissionTrackingController extends Controller
             if (!$user) {
                 return $this->errorResponse('আপনার সেশন শেষ হয়ে গেছে। অনুগ্রহ করে পুনরায় লগইন করুন।', 401);
             }
+
+            $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::findOrFail($batchId);
 
             if (!$batch->is_active) {
                 return $this->errorResponse('এই ব্যাচটি বর্তমানে বন্ধ বা লক করা আছে। নতুন ফাইল আপলোড করা যাবে না।', 422);
@@ -359,7 +387,7 @@ class SubmissionTrackingController extends Controller
                 }
             }
 
-            return DB::transaction(function () use ($request, $batch, $user, $driveService) {
+            return DB::transaction(function () use ($request, $batch, $user) {
                 $submission = TeacherSubmission::firstOrCreate(
                     [
                         'batch_id' => $batch->id,
@@ -387,7 +415,15 @@ class SubmissionTrackingController extends Controller
                 }
 
                 if (!$batch->allow_multiple_files) {
-                    // Remove existing files if single file mode
+                    // Remove existing files physically and from DB if single file mode
+                    foreach ($submission->files as $existingFile) {
+                        if ($existingFile->file_path) {
+                            $oldPath = storage_path('app/public/' . $existingFile->file_path);
+                            if (file_exists($oldPath)) {
+                                @unlink($oldPath);
+                            }
+                        }
+                    }
                     $submission->files()->delete();
                 }
 
@@ -418,15 +454,6 @@ class SubmissionTrackingController extends Controller
 
                 $submission->load(['files', 'teacher', 'batch']);
 
-                // Automatic Google Drive Sync under [Batch Title] / [Teacher Name (EMP ID)]
-                try {
-                    $driveService->syncTeacherSubmission($submission);
-                } catch (\Throwable $driveEx) {
-                    Log::warning('Google Drive auto-sync notice: ' . $driveEx->getMessage());
-                }
-
-                $submission->load('files');
-
                 return $this->successResponse($submission, 'পাঠ পরিকল্পনা সফলভাবে জমা ও সংরক্ষিত হয়েছে!', 201);
             });
         } catch (\Illuminate\Validation\ValidationException $ve) {
@@ -434,7 +461,7 @@ class SubmissionTrackingController extends Controller
             return $this->errorResponse($msg, 422);
         } catch (\Throwable $e) {
             Log::error('Teacher SubmitFiles Exception: ' . $e->getMessage(), [
-                'batch_id' => $batch->id ?? null,
+                'batch_id' => $batchId ?? null,
                 'user_id' => $request->user()?->id ?? null,
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -442,48 +469,90 @@ class SubmissionTrackingController extends Controller
         }
     }
 
-    public function syncDrive(SubmissionBatch $batch, GoogleDriveService $driveService): JsonResponse
+    public function syncDrive($batchId): JsonResponse
+    {
+        return $this->successResponse([
+            'synced' => true,
+            'message' => 'ফাইলগুলো লোকাল সার্ভারে সংরক্ষিত আছে।'
+        ], 'ফাইলগুলো লোকাল সার্ভার স্টোরেজে সংরক্ষিত আছে।');
+    }
+
+    public function getGoogleDriveStatus(): JsonResponse
+    {
+        return $this->successResponse([
+            'enabled' => false,
+            'mode' => 'local_storage',
+            'message' => 'লোকাল সার্ভার স্টোরেজ সক্রিয়।'
+        ]);
+    }
+
+    public function deleteFile(Request $request, $fileId): JsonResponse
     {
         try {
-            $result = $driveService->syncEntireBatch($batch);
-            return $this->successResponse($result, "ব্যাচের সকল ফাইল Google Drive-এ শিক্ষকভিত্তিক ফোল্ডারে সফলভাবে সিঙ্ক হয়েছে!");
-        } catch (\Exception $e) {
-            return $this->errorResponse('Google Drive সিঙ্ক করতে সমস্যা হয়েছে: ' . $e->getMessage(), 500);
+            $user = $request->user();
+            if (!$user) {
+                return $this->errorResponse('আপনার সেশন শেষ হয়ে গেছে। অনুগ্রহ করে পুনরায় লগইন করুন।', 401);
+            }
+
+            // Support either model instance or integer ID
+            $file = $fileId instanceof SubmissionFile ? $fileId : SubmissionFile::find($fileId);
+            if (!$file) {
+                return $this->errorResponse('ফাইলটি পাওয়া যায়নি বা ইতিমধ্যে মুছে ফেলা হয়েছে।', 404);
+            }
+
+            $submission = $file->submission;
+            if (!$submission) {
+                // Delete orphan record
+                if ($file->file_path) {
+                    $localPath = storage_path('app/public/' . $file->file_path);
+                    if (file_exists($localPath)) {
+                        @unlink($localPath);
+                    }
+                }
+                $file->delete();
+                return $this->successResponse(null, 'ফাইল সফলভাবে মুছে ফেলা হয়েছে।');
+            }
+
+            $batch = $submission->batch;
+
+            $isAdmin = $user->hasAnyRole(['super_admin', 'principal', 'academic_coordinator']);
+            if (!$isAdmin && $submission->teacher_id !== $user->id) {
+                return $this->errorResponse('আপনার এই ফাইলটি মুছে ফেলার অনুমতি নেই।', 403);
+            }
+
+            if ($batch && !$batch->is_active && !$isAdmin) {
+                return $this->errorResponse('এই ব্যাচটি লক করা আছে। ফাইল মোছা যাবে না।', 422);
+            }
+
+            // Physically remove local file
+            if ($file->file_path) {
+                $localPath = storage_path('app/public/' . $file->file_path);
+                if (file_exists($localPath)) {
+                    @unlink($localPath);
+                }
+            }
+
+            $file->delete();
+
+            // If no more files remain for this submission, delete the teacher submission record so it resets to not_submitted
+            if ($submission->files()->count() === 0) {
+                $submission->delete();
+            }
+
+            return $this->successResponse(null, 'ফাইল সফলভাবে মুছে ফেলা হয়েছে।');
+        } catch (\Throwable $e) {
+            Log::error('Delete Submission File Error: ' . $e->getMessage(), [
+                'file_id' => is_numeric($fileId) ? $fileId : ($fileId->id ?? null),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->errorResponse('ফাইল মোছা সম্ভব হয়নি: ' . $e->getMessage(), 500);
         }
     }
 
-    public function getGoogleDriveStatus(GoogleDriveService $driveService): JsonResponse
+    public function updateSubmissionStatus(Request $request, $submissionId): JsonResponse
     {
-        return $this->successResponse($driveService->getStatus());
-    }
+        $submission = $submissionId instanceof TeacherSubmission ? $submissionId : TeacherSubmission::findOrFail($submissionId);
 
-    public function deleteFile(Request $request, SubmissionFile $file): JsonResponse
-    {
-        $user = $request->user();
-        $submission = $file->submission;
-        $batch = $submission->batch;
-
-        $isAdmin = $user->hasAnyRole(['super_admin', 'principal', 'academic_coordinator']);
-        if (!$isAdmin && $submission->teacher_id !== $user->id) {
-            return $this->errorResponse('আপনার এই ফাইলটি মুছে ফেলার অনুমতি নেই।', 403);
-        }
-
-        if (!$batch->is_active) {
-            return $this->errorResponse('এই ব্যাচটি লক করা আছে। ফাইল মোছা যাবে না।', 422);
-        }
-
-        Storage::disk('public')->delete($file->file_path);
-        $file->delete();
-
-        if ($submission->files()->count() === 0) {
-            $submission->delete();
-        }
-
-        return $this->successResponse(null, 'ফাইল সফলভাবে মুছে ফেলা হয়েছে।');
-    }
-
-    public function updateSubmissionStatus(Request $request, TeacherSubmission $submission): JsonResponse
-    {
         $validated = $request->validate([
             'status' => ['required', 'in:submitted,approved,revision_requested'],
             'remarks' => ['nullable', 'string'],
@@ -494,42 +563,58 @@ class SubmissionTrackingController extends Controller
         return $this->successResponse($submission, 'সাবমিশন স্ট্যাটাস আপডেট হয়েছে।');
     }
 
-    public function downloadAllZip(SubmissionBatch $batch)
+    public function downloadAllZip($batchId)
     {
-        $submissions = $batch->submissions()->with(['teacher.department:id,name_bn,name_en', 'files'])->get();
-        if ($submissions->isEmpty()) {
-            return response()->json(['success' => false, 'message' => 'কোনো ফাইল জমা হয়নি।'], 404);
-        }
+        try {
+            $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::findOrFail($batchId);
+            $submissions = $batch->submissions()->with(['teacher.department:id,name_bn,name_en', 'files'])->get();
+            if ($submissions->isEmpty()) {
+                return response()->json(['success' => false, 'message' => 'কোনো ফাইল জমা হয়নি।'], 404);
+            }
 
-        $zipFileName = 'BSISC_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $batch->title) . '_Files.zip';
-        $tempPath = storage_path('app/temp_' . time() . '.zip');
+            $zipFileName = 'BSISC_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $batch->title) . '_Files.zip';
+            $tempPath = storage_path('app/temp_' . time() . '_' . rand(1000, 9999) . '.zip');
 
-        $zip = new \ZipArchive();
-        if ($zip->open($tempPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-            return response()->json(['success' => false, 'message' => 'ZIP ফাইল তৈরি করা সম্ভব হয়নি।'], 500);
-        }
+            $zip = new \ZipArchive();
+            if ($zip->open($tempPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                return response()->json(['success' => false, 'message' => 'ZIP ফাইল তৈরি করা সম্ভব হয়নি।'], 500);
+            }
 
-        foreach ($submissions as $sub) {
-            $teacher = $sub->teacher;
-            $deptName = $teacher?->department?->name_en ?: 'General';
-            $safeTeacherName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $teacher->name);
-            $folderName = "{$deptName}/{$safeTeacherName}";
+            $fileCount = 0;
+            foreach ($submissions as $sub) {
+                $teacher = $sub->teacher;
+                $deptName = $teacher?->department?->name_en ?: 'General';
+                $safeTeacherName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $teacher->name ?? 'Teacher');
+                $folderName = "{$deptName}/{$safeTeacherName}";
 
-            foreach ($sub->files as $f) {
-                $filePath = storage_path('app/public/' . $f->file_path);
-                if (file_exists($filePath)) {
-                    $zip->addFile($filePath, "{$folderName}/" . $f->file_name);
+                foreach ($sub->files as $f) {
+                    $filePath = storage_path('app/public/' . $f->file_path);
+                    if (file_exists($filePath)) {
+                        $zip->addFile($filePath, "{$folderName}/" . $f->file_name);
+                        $fileCount++;
+                    }
                 }
             }
+
+            $zip->close();
+
+            if ($fileCount === 0) {
+                if (file_exists($tempPath)) {
+                    @unlink($tempPath);
+                }
+                return response()->json(['success' => false, 'message' => 'সার্ভারে কোনো ফাইল খুঁজে পাওয়া যায়নি।'], 404);
+            }
+
+            return response()->download($tempPath, $zipFileName)->deleteFileAfterSend(true);
+        } catch (\Throwable $e) {
+            Log::error('Download Zip Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'ZIP ফাইল ডাউনলোড ব্যর্থ হয়েছে: ' . $e->getMessage()], 500);
         }
-
-        $zip->close();
-
-        return response()->download($tempPath, $zipFileName)->deleteFileAfterSend(true);
     }
 
-    public function exportSundayReport(SubmissionBatch $batch): JsonResponse
+    public function exportSundayReport($batchId): JsonResponse
     {
+        $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::findOrFail($batchId);
         $batch->load(['schoolClass:id,name_bn,name_en', 'creator:id,name']);
 
         $teacherRole = Role::where('name', 'teacher')->first();

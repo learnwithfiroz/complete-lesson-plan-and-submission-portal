@@ -193,7 +193,7 @@ export const SubmissionTracking: React.FC = () => {
     setUploading(true);
     try {
       await submissionTrackingApi.submitFiles(uploadModalBatch.id, uploadFiles, uploadRemarks.trim() || undefined);
-      toast.success('ফাইল সফলভাবে আপলোড ও Google Drive-এ সংরক্ষিত হয়েছে!');
+      toast.success('🎉 ফাইল সফলভাবে আপলোড ও সার্ভারে সংরক্ষিত হয়েছে!');
       setUploadModalBatch(null);
       setUploadFiles([]);
       setUploadRemarks('');
