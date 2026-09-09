@@ -85,6 +85,7 @@ export const App: React.FC = () => {
 
             {/* Public Form & Application Tracking Routes (No login required) */}
             <Route path="/forms/:slug" element={<PublicFormView />} />
+            <Route path="/f/:slug" element={<PublicFormView />} />
             <Route path="/apply/:type" element={<PublicFormView />} />
             <Route path="/track" element={<ApplicationTracking />} />
             <Route path="/track/:trackingNumber" element={<ApplicationTracking />} />

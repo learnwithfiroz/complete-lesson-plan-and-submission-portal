@@ -105,6 +105,12 @@ export const FormBuilderStudio: React.FC = () => {
   const [showEmbedModal, setShowEmbedModal] = useState<boolean>(false);
   const [showJsonModal, setShowJsonModal] = useState<boolean>(false);
 
+  // Google Forms Publish & Share Modal state
+  const [useShortUrl, setUseShortUrl] = useState<boolean>(false);
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  const [copiedEmbed, setCopiedEmbed] = useState<boolean>(false);
+  const [activeShareTab, setActiveShareTab] = useState<'link' | 'embed' | 'qr' | 'social'>('link');
+
   // AI Generator state
   const [aiPrompt, setAiPrompt] = useState<string>('');
   const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
@@ -223,7 +229,16 @@ export const FormBuilderStudio: React.FC = () => {
     }
   };
 
+    const handlePublish = async () => {
+    setIsActive(true);
+    await handleSaveSchemaInternal(true);
+  };
+
   const handleSaveSchema = async () => {
+    await handleSaveSchemaInternal(false);
+  };
+
+  const handleSaveSchemaInternal = async (openShareModal = true) => {
     setSaving(true);
     const payloadData: FormSchemaData = {
       ...schemaData,
@@ -264,8 +279,9 @@ export const FormBuilderStudio: React.FC = () => {
         toast.success('✨ নতুন ফরম স্কিমা সফলভাবে তৈরি ও সেভ করা হয়েছে!');
       }
       loadSchemas(formType);
-      // Automatically show the Google Forms-style public link popup!
-      setShowPublicLinkModal(true);
+      if (openShareModal) {
+        setShowPublicLinkModal(true);
+      }
     } catch (err: any) {
       console.error('Failed to save schema', err);
       toast.error(err?.response?.data?.message || 'ফরম স্কিমা সেভ করতে সমস্যা হয়েছে।');
@@ -690,10 +706,12 @@ export const FormBuilderStudio: React.FC = () => {
     toast.success('নতুন টেমপ্লেট ড্রাফট তৈরি করা হয়েছে!');
   };
 
-  // Compute public full URL & Embed code
-  const publicShareUrl = `${window.location.origin}/forms/${schemaSlug || formType}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(publicShareUrl)}`;
-  const embedIframeCode = `<iframe src="${publicShareUrl}" width="100%" height="800px" frameborder="0" style="border:0; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);" allowfullscreen></iframe>`;
+  // Compute public full URL, Short URL & Embed code
+  const publicFullUrl = `${window.location.origin}/forms/${schemaSlug || formType}`;
+  const shortShareUrl = `${window.location.origin}/f/${schemaSlug || formType}`;
+  const publicShareUrl = useShortUrl ? shortShareUrl : publicFullUrl;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(publicFullUrl)}`;
+  const embedIframeCode = `<iframe src="${publicFullUrl}" width="100%" height="900px" frameborder="0" style="border:0; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.08);" allowfullscreen></iframe>`;
 
   // Filter sections based on activeSectionId
   const displayedSections =
@@ -880,14 +898,26 @@ export const FormBuilderStudio: React.FC = () => {
 
             {/* Save Button */}
             <Button
-              variant="success"
-              className="d-flex align-items-center gap-2 fw-bold px-4 py-2 shadow-sm rounded-3"
-              style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
+              variant="outline-secondary"
+              className="d-flex align-items-center gap-1.5 fw-bold px-3 py-2 shadow-xs rounded-3"
               onClick={handleSaveSchema}
               disabled={saving}
+              title="ড্রাফট হিসেবে সংরক্ষণ করুন"
             >
-              <Save size={18} />
-              <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'Save Form Schema'}</span>
+              <Save size={16} />
+              <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'Save Draft'}</span>
+            </Button>
+
+            <Button
+              variant="success"
+              className="d-flex align-items-center gap-2 fw-bold px-4 py-2 shadow-sm rounded-3"
+              style={{ backgroundColor: '#059669', borderColor: '#059669' }}
+              onClick={handlePublish}
+              disabled={saving}
+              title="Google Forms এর মতো পাবলিশ করে সরাসরি লিংক ও QR কোড তৈরি করুন"
+            >
+              <Sparkles size={18} className="text-warning" />
+              <span>{saving ? 'পাবলিশ হচ্ছে...' : '🚀 Publish & Get Link'}</span>
             </Button>
           </div>
         </div>
@@ -2170,149 +2200,359 @@ export const FormBuilderStudio: React.FC = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* 7. Modal: Google Forms-Style Shareable Public Link & QR Code */}
+      {/* 7. Modal: Google Forms-Style Send / Publish & Share Link */}
       <Modal show={showPublicLinkModal} onHide={() => setShowPublicLinkModal(false)} centered size="lg">
-        <Modal.Header closeButton className="bg-primary text-white">
-          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2">
-            <Share2 size={18} />
-            Google Forms এর মতো পাবলিক শেয়ার লিংক ও QR Code
+        <Modal.Header closeButton style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: '#ffffff' }}>
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2 text-white">
+            <Sparkles size={18} className="text-warning" />
+            <span>Google Forms এর মতো পাবলিশ ও শেয়ারিং লিংক (Send / Share Form)</span>
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4">
-          <div className="text-center mb-4">
+          {/* Top Google Forms Style Banner */}
+          <div className="text-center mb-4 pb-2 border-bottom">
             <div
-              className="d-inline-flex p-3 rounded-circle bg-primary-subtle text-primary mb-2 shadow-xs"
-              style={{ width: 64, height: 64, alignItems: 'center', justifyContent: 'center' }}
+              className="d-inline-flex p-3 rounded-circle text-white mb-2 shadow-sm"
+              style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
             >
               <CheckCircle2 size={36} />
             </div>
-            <h5 className="fw-bold text-dark mb-1">ফর্মটি পাবলিক আবেদনের জন্য সম্পূর্ণ প্রস্তুত!</h5>
+            <h5 className="fw-bold text-dark mb-1">🎉 আপনার ফরমটি সফলভাবে পাবলিশ হয়েছে!</h5>
             <p className="text-muted small mb-0">
-              নিচের লিংকটি কপি করে সামাজিক মাধ্যম, ওয়েবসাইট বা নোটিশে শেয়ার করুন। যে কেউ কোনো লগইন ছাড়াই আবেদন করতে পারবে।
+              যে কেউ এই লিংকে প্রবেশ করে কোনো অ্যাকাউন্ট ছাড়াই সরাসরি অনলাইনে ফরম পূরণ ও আবেদন জমা দিতে পারবে।
             </p>
           </div>
 
-          <Card className="border p-3 bg-light mb-4 rounded-3">
-            <Form.Label className="small fw-bold text-uppercase text-muted mb-1">
-              পাবলিক শেয়ারেবল লিংক (Public Sharable Link):
-            </Form.Label>
-            <div className="input-group mb-2">
-              <span className="input-group-text bg-white text-muted">
-                <LinkIcon size={16} />
-              </span>
-              <Form.Control type="text" readOnly value={publicShareUrl} className="fw-bold bg-white text-primary" />
-              <Button
-                variant="primary"
-                onClick={() => {
-                  navigator.clipboard.writeText(publicShareUrl);
-                  toast.success('📋 লিংকটি সফলভাবে ক্লিপবোর্ডে কপি করা হয়েছে!');
-                }}
-                className="d-flex align-items-center gap-1.5 px-3"
-              >
-                <Copy size={16} />
-                <span>Copy Link</span>
-              </Button>
-            </div>
+          {/* Google Forms Tab Bar (Send via: Link | Embed | QR | Social) */}
+          <div className="d-flex justify-content-center gap-2 mb-4">
+            <Button
+              variant={activeShareTab === 'link' ? 'primary' : 'light'}
+              size="sm"
+              className="rounded-pill px-3.5 py-1.5 fw-bold d-flex align-items-center gap-1.5 shadow-xs"
+              style={activeShareTab === 'link' ? { backgroundColor: '#4f46e5', borderColor: '#4f46e5' } : {}}
+              onClick={() => setActiveShareTab('link')}
+            >
+              <LinkIcon size={15} />
+              <span>লিংক (Share Link)</span>
+            </Button>
+            <Button
+              variant={activeShareTab === 'embed' ? 'primary' : 'light'}
+              size="sm"
+              className="rounded-pill px-3.5 py-1.5 fw-bold d-flex align-items-center gap-1.5 shadow-xs"
+              style={activeShareTab === 'embed' ? { backgroundColor: '#4f46e5', borderColor: '#4f46e5' } : {}}
+              onClick={() => setActiveShareTab('embed')}
+            >
+              <Code size={15} />
+              <span>HTML এম্বেড কোড</span>
+            </Button>
+            <Button
+              variant={activeShareTab === 'qr' ? 'primary' : 'light'}
+              size="sm"
+              className="rounded-pill px-3.5 py-1.5 fw-bold d-flex align-items-center gap-1.5 shadow-xs"
+              style={activeShareTab === 'qr' ? { backgroundColor: '#4f46e5', borderColor: '#4f46e5' } : {}}
+              onClick={() => setActiveShareTab('qr')}
+            >
+              <QrCode size={15} />
+              <span>QR Code স্ক্যানার</span>
+            </Button>
+            <Button
+              variant={activeShareTab === 'social' ? 'primary' : 'light'}
+              size="sm"
+              className="rounded-pill px-3.5 py-1.5 fw-bold d-flex align-items-center gap-1.5 shadow-xs"
+              style={activeShareTab === 'social' ? { backgroundColor: '#4f46e5', borderColor: '#4f46e5' } : {}}
+              onClick={() => setActiveShareTab('social')}
+            >
+              <Share2 size={15} />
+              <span>সোশ্যাল মিডিয়া</span>
+            </Button>
+          </div>
 
-            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2 pt-2 border-top">
-              <div className="d-flex align-items-center gap-2">
-                <Form.Check
-                  type="switch"
-                  id="accepting-responses-toggle"
-                  label={
-                    <span className="small fw-bold">
-                      {isActive ? '🟢 রেসপন্স গ্রহণ চালু আছে (Accepting Responses)' : '🔴 রেসপন্স গ্রহণ বন্ধ'}
-                    </span>
-                  }
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                />
-              </div>
-              <div className="d-flex align-items-center gap-2">
-                <Button
-                  variant="outline-dark"
-                  size="sm"
-                  onClick={() => window.open(publicShareUrl, '_blank')}
-                  className="d-flex align-items-center gap-1"
-                >
-                  <ExternalLink size={14} /> Open Live Form
-                </Button>
+          {/* TAB 1: Share Link (Google Forms style) */}
+          {activeShareTab === 'link' && (
+            <div>
+              <Card className="border p-3.5 bg-light mb-3 rounded-3 shadow-xs">
+                <div className="d-flex justify-content-between align-items-center mb-1.5">
+                  <Form.Label className="small fw-bold text-uppercase text-muted mb-0">
+                    পাবলিক আবেদন ফরম লিংক (Form Link):
+                  </Form.Label>
+                  <Form.Check
+                    type="checkbox"
+                    id="shorten-url-checkbox"
+                    label={<span className="small fw-semibold text-primary">Shorten URL (সংক্ষিপ্ত লিংক)</span>}
+                    checked={useShortUrl}
+                    onChange={(e) => setUseShortUrl(e.target.checked)}
+                  />
+                </div>
+
+                <div className="input-group mb-2">
+                  <span className="input-group-text bg-white text-muted">
+                    <LinkIcon size={16} />
+                  </span>
+                  <Form.Control
+                    type="text"
+                    readOnly
+                    value={publicShareUrl}
+                    className="fw-bold bg-white text-primary font-monospace"
+                    style={{ fontSize: '14px' }}
+                  />
+                  <Button
+                    variant={copiedLink ? 'success' : 'primary'}
+                    onClick={() => {
+                      navigator.clipboard.writeText(publicShareUrl);
+                      setCopiedLink(true);
+                      toast.success('📋 লিংকটি সফলভাবে ক্লিপবোর্ডে কপি করা হয়েছে!');
+                      setTimeout(() => setCopiedLink(false), 2500);
+                    }}
+                    className="d-flex align-items-center gap-1.5 px-3.5 fw-bold"
+                    style={!copiedLink ? { backgroundColor: '#4f46e5', borderColor: '#4f46e5' } : {}}
+                  >
+                    {copiedLink ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                    <span>{copiedLink ? 'কপি হয়েছে! ✔' : 'Copy Link'}</span>
+                  </Button>
+                </div>
+
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 pt-2 mt-1 border-top">
+                  <span className="small text-muted">
+                    💡 এই লিংকটি যে কাউকে পাঠান। তারা কম্পিউটার বা মোবাইলে ফরমটি পূরণ করতে পারবে।
+                  </span>
+                  <Button
+                    variant="outline-dark"
+                    size="sm"
+                    onClick={() => window.open(publicShareUrl, '_blank')}
+                    className="d-flex align-items-center gap-1 rounded-pill fw-semibold"
+                  >
+                    <ExternalLink size={14} /> নতুন ট্যাবে লাইভ ফরম খুলুন
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Custom Slug Editor Box */}
+              <div className="p-3 border rounded-3 bg-white mb-2">
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <span className="small fw-bold text-dark d-flex align-items-center gap-1">
+                    <Settings size={14} className="text-secondary" />
+                    লিংক কাস্টমাইজেশন (Custom URL Slug):
+                  </span>
+                  <span className="badge bg-light text-secondary border">Active Slug: {schemaSlug}</span>
+                </div>
+                <div className="input-group input-group-sm">
+                  <span className="input-group-text bg-light text-muted font-monospace">
+                    {window.location.origin}/forms/
+                  </span>
+                  <Form.Control
+                    type="text"
+                    placeholder="e.g. admission-2026, job-lecturer-physics"
+                    value={schemaSlug}
+                    onChange={(e) => setSchemaSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))}
+                    className="font-monospace fw-semibold"
+                  />
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    onClick={async () => {
+                      await handleSaveSchemaInternal(false);
+                      toast.success(`✨ লিংক স্ল্যাগ সফলভাবে '${schemaSlug}' এ আপডেট করা হয়েছে!`);
+                    }}
+                  >
+                    Save Slug
+                  </Button>
+                </div>
               </div>
             </div>
-          </Card>
+          )}
 
-          {/* QR Code Preview & Direct Share */}
-          <Row className="g-3 align-items-center">
-            <Col md={5} className="text-center border-end">
-              <div className="p-2 border rounded-3 d-inline-block bg-white shadow-xs mb-2">
-                <img src={qrCodeUrl} alt="QR Code" style={{ width: 140, height: 140 }} />
-              </div>
-              <div className="small fw-bold text-dark d-flex align-items-center justify-content-center gap-1">
-                <QrCode size={14} className="text-primary" />
-                <span>স্ক্যান করে সরাসরি ফর্ম ওপেন করুন</span>
-              </div>
-            </Col>
-            <Col md={7}>
-              <h6 className="fw-bold text-dark mb-2">সোশ্যাল ও মেসেঞ্জারে সরাসরি শেয়ার করুন:</h6>
-              <div className="d-flex flex-column gap-2">
+          {/* TAB 2: HTML Embed Code */}
+          {activeShareTab === 'embed' && (
+            <Card className="border p-3.5 bg-light mb-3 rounded-3 shadow-xs">
+              <Form.Label className="small fw-bold text-uppercase text-muted mb-1.5">
+                HTML Embed iframe Code (যেকোনো ওয়েবসাইটে বসান):
+              </Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                readOnly
+                value={embedIframeCode}
+                className="font-monospace small bg-white mb-2"
+              />
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="small text-muted">
+                  WordPress, Joomla, HTML ওয়েবসাইট বা ব্লগে কপি করে পেস্ট করুন।
+                </span>
                 <Button
-                  variant="outline-success"
+                  variant={copiedEmbed ? 'success' : 'primary'}
                   size="sm"
-                  className="d-flex align-items-center justify-content-start gap-2 py-2"
-                  onClick={() =>
-                    window.open(
-                      `https://api.whatsapp.com/send?text=${encodeURIComponent(
-                        `${templateTitle} - অনলাইন আবেদন লিংক: ${publicShareUrl}`
-                      )}`,
-                      '_blank'
-                    )
-                  }
-                >
-                  <span>💬 WhatsApp এ শেয়ার করুন</span>
-                </Button>
-                <Button
-                  variant="outline-primary"
-                  size="sm"
-                  className="d-flex align-items-center justify-content-start gap-2 py-2"
-                  onClick={() =>
-                    window.open(
-                      `mailto:?subject=${encodeURIComponent(templateTitle)}&body=${encodeURIComponent(
-                        `অনলাইন আবেদন করতে নিচের লিংকে ক্লিক করুন:\n${publicShareUrl}`
-                      )}`,
-                      '_blank'
-                    )
-                  }
-                >
-                  <span>✉️ Email এর মাধ্যমে পাঠান</span>
-                </Button>
-                <Button
-                  variant="outline-secondary"
-                  size="sm"
-                  className="d-flex align-items-center justify-content-start gap-2 py-2"
                   onClick={() => {
-                    const trackUrl = `${window.location.origin}/track`;
-                    navigator.clipboard.writeText(trackUrl);
-                    toast.success('📋 ট্র্যাকিং পোর্টাল লিংক কপি করা হয়েছে!');
+                    navigator.clipboard.writeText(embedIframeCode);
+                    setCopiedEmbed(true);
+                    toast.success('📋 HTML Embed কোড কপি করা হয়েছে!');
+                    setTimeout(() => setCopiedEmbed(false), 2500);
                   }}
+                  className="d-flex align-items-center gap-1.5 px-3 fw-bold"
+                  style={!copiedEmbed ? { backgroundColor: '#4f46e5', borderColor: '#4f46e5' } : {}}
                 >
-                  <span>🔍 ট্র্যাকিং পোর্টাল লিংক কপি করুন (/track)</span>
+                  {copiedEmbed ? <CheckCircle2 size={15} /> : <Copy size={15} />}
+                  <span>{copiedEmbed ? 'কোড কপি হয়েছে! ✔' : 'Copy HTML'}</span>
                 </Button>
               </div>
-            </Col>
-          </Row>
+            </Card>
+          )}
+
+          {/* TAB 3: QR Code */}
+          {activeShareTab === 'qr' && (
+            <Row className="g-3 align-items-center p-2">
+              <Col md={5} className="text-center border-end">
+                <div className="p-2 border rounded-3 d-inline-block bg-white shadow-sm mb-2">
+                  <img src={qrCodeUrl} alt="Form QR Code" style={{ width: 170, height: 170, display: 'block' }} />
+                </div>
+                <div className="small fw-bold text-dark d-flex align-items-center justify-content-center gap-1">
+                  <QrCode size={14} className="text-primary" />
+                  <span>মোবাইল ক্যামেরা দিয়ে স্ক্যান করুন</span>
+                </div>
+              </Col>
+              <Col md={7}>
+                <h6 className="fw-bold text-dark mb-2">প্রিন্ট ও নোটিশ বোর্ডের জন্য QR Code:</h6>
+                <p className="small text-muted mb-3">
+                  এই QR কোডটি ডাউনলোড করে প্রসপেক্টাস, ব্যানার, নোটিশ বোর্ড বা ফ্লায়ারে প্রিন্ট করতে পারেন।
+                </p>
+                <div className="d-flex flex-column gap-2">
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    className="d-flex align-items-center justify-content-center gap-2 py-2 fw-semibold rounded-2"
+                    onClick={() => {
+                      const link = document.createElement('a');
+                      link.href = qrCodeUrl;
+                      link.download = `BSISC_Form_QR_${schemaSlug}.png`;
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                      toast.success('📥 QR কোড ডাউনলোড শুরু হয়েছে!');
+                    }}
+                  >
+                    <Download size={15} /> QR Code ইমেজ ডাউনলোড করুন
+                  </Button>
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    className="d-flex align-items-center justify-content-center gap-2 py-2 fw-semibold rounded-2"
+                    onClick={() => window.open(qrCodeUrl, '_blank')}
+                  >
+                    <ExternalLink size={15} /> বড় আকারে QR কোড ভিউ করুন
+                  </Button>
+                </div>
+              </Col>
+            </Row>
+          )}
+
+          {/* TAB 4: Social Share */}
+          {activeShareTab === 'social' && (
+            <div className="p-3 border rounded-3 bg-white">
+              <h6 className="fw-bold text-dark mb-3">১-ক্লিকে সোশ্যাল মিডিয়ায় সরাসরি শেয়ার করুন:</h6>
+              <Row className="g-2">
+                <Col md={6}>
+                  <Button
+                    variant="outline-success"
+                    size="sm"
+                    className="w-100 d-flex align-items-center justify-content-start gap-2 py-2.5 rounded-3 fw-semibold shadow-xs"
+                    onClick={() =>
+                      window.open(
+                        `https://api.whatsapp.com/send?text=${encodeURIComponent(
+                          `🎓 ${templateTitle}\n\nঅনলাইনে সরাসরি আবেদন করতে নিচের লিংকে ক্লিক করুন:\n👉 ${publicShareUrl}`
+                        )}`,
+                        '_blank'
+                      )
+                    }
+                  >
+                    <span className="fs-5">💬</span>
+                    <span>WhatsApp এ শেয়ার করুন</span>
+                  </Button>
+                </Col>
+                <Col md={6}>
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    className="w-100 d-flex align-items-center justify-content-start gap-2 py-2.5 rounded-3 fw-semibold shadow-xs"
+                    onClick={() =>
+                      window.open(
+                        `mailto:?subject=${encodeURIComponent(templateTitle)}&body=${encodeURIComponent(
+                          `অনলাইন আবেদন করতে নিচের লিংকে প্রবেশ করুন:\n\n${publicShareUrl}\n\nধন্যবাদ,\nBaridhara Scholars' International School & College (BSISC)`
+                        )}`,
+                        '_blank'
+                      )
+                    }
+                  >
+                    <span className="fs-5">✉️</span>
+                    <span>Email এ লিংক পাঠান</span>
+                  </Button>
+                </Col>
+                <Col md={12} className="mt-2">
+                  <Button
+                    variant="outline-secondary"
+                    size="sm"
+                    className="w-100 d-flex align-items-center justify-content-center gap-2 py-2.5 rounded-3 fw-semibold"
+                    onClick={() => {
+                      const trackUrl = `${window.location.origin}/track`;
+                      navigator.clipboard.writeText(trackUrl);
+                      toast.success('📋 ট্র্যাকিং পোর্টাল লিংক কপি করা হয়েছে (/track)!');
+                    }}
+                  >
+                    <Search size={15} />
+                    <span>আবেদন ট্র্যাকিং পোর্টাল লিংক কপি করুন (/track)</span>
+                  </Button>
+                </Col>
+              </Row>
+            </div>
+          )}
+
+          {/* Bottom Controls: Accepting Responses Switch */}
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-4 pt-3 border-top">
+            <div className="d-flex align-items-center gap-2">
+              <Form.Check
+                type="switch"
+                id="accepting-responses-toggle"
+                label={
+                  <span className="small fw-bold">
+                    {isActive ? '🟢 রেসপন্স গ্রহণ চালু আছে (Accepting Responses)' : '🔴 রেসপন্স গ্রহণ সাময়িকভাবে বন্ধ'}
+                  </span>
+                }
+                checked={isActive}
+                onChange={async (e) => {
+                  setIsActive(e.target.checked);
+                  await handleSaveSchemaInternal(false);
+                  toast.info(e.target.checked ? 'রেসপন্স গ্রহণ চালু করা হয়েছে।' : 'রেসপন্স গ্রহণ বন্ধ করা হয়েছে।');
+                }}
+              />
+            </div>
+
+            <Button
+              variant="outline-primary"
+              size="sm"
+              onClick={() => {
+                setShowPublicLinkModal(false);
+                handleOpenSubmissions();
+              }}
+              className="d-flex align-items-center gap-1.5 rounded-pill fw-semibold"
+            >
+              <Users size={14} /> রেসপন্স ও আবেদনকারীদের তালিকা দেখুন
+            </Button>
+          </div>
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowPublicLinkModal(false)}>
-            বন্ধ করুন
+        <Modal.Footer className="bg-light">
+          <Button variant="secondary" size="sm" onClick={() => setShowPublicLinkModal(false)}>
+            বন্ধ করুন (Close)
           </Button>
           <Button
             variant="primary"
+            size="sm"
+            style={{ backgroundColor: '#4f46e5', borderColor: '#4f46e5' }}
+            className="fw-bold px-3.5"
             onClick={() => {
               window.open(publicShareUrl, '_blank');
               setShowPublicLinkModal(false);
             }}
           >
-            ফর্মটি ওপেন করুন
+            <ExternalLink size={14} className="me-1" />
+            লাইভ ফর্মটি ওপেন করুন
           </Button>
         </Modal.Footer>
       </Modal>
