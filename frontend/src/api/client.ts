@@ -46,18 +46,6 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiError>) => {
     const status = error.response?.status;
-    const errorData = error.response?.data;
-    const url = error.config?.url || '';
-
-    // Ignore polling / background / public endpoints from intrusive error toasts
-    const isBackgroundPoll =
-      url.includes('/notifications') ||
-      url.includes('/live-ticker') ||
-      url.includes('/notices') ||
-      url.includes('/system/status') ||
-      url.includes('/dashboard/stats') ||
-      url.includes('/user') ||
-      url.includes('/form-schemas/default');
 
     if (status === 401) {
       const publicPaths = ['/login', '/forms', '/f/', '/track', '/setup', '/forgot-password', '/reset-password'];
@@ -79,34 +67,9 @@ apiClient.interceptors.response.use(
           }, 500);
         }
       }
-    } else if (status === 403) {
-      if (!isBackgroundPoll) {
-        toast.warning(errorData?.message || 'Access restricted: You lack permission for this feature.');
-      }
-    } else if (status === 422) {
-      const firstError = errorData?.errors ? Object.values(errorData.errors)[0]?.[0] : null;
-      if (firstError) {
-        toast.error(firstError);
-      } else {
-        toast.error(errorData?.message || 'Validation failed. Please verify the input fields.');
-      }
-    } else if (status === 429) {
-      toast.warning('Too many attempts. Please wait a moment before trying again.');
     }
 
-    if (!isBackgroundPoll) {
-      if (status && status >= 500) {
-        // Prevent repeated 500 toast storms
-        toast.error(errorData?.message || 'A server error occurred. Please contact system support.', {
-          toastId: 'server-error-single',
-        });
-      } else if (error.message === 'Network Error') {
-        toast.error('Network connection error. Please check your internet connection.', {
-          toastId: 'network-error-single',
-        });
-      }
-    }
-
+    // All errors are passed silently to calling components to handle with custom, clean UI feedback
     return Promise.reject(error);
   }
 );

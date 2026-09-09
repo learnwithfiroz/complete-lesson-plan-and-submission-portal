@@ -69,4 +69,17 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], 404);
             }
         });
+
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                \Illuminate\Support\Facades\Log::error('API Global Exception: ' . $e->getMessage(), [
+                    'url' => $request->fullUrl(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage() ?: 'অনুরোধটি সম্পন্ন করা যায়নি।',
+                ], 500);
+            }
+        });
     })->create();
