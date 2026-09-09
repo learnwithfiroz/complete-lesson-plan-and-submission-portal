@@ -172,10 +172,16 @@ class SubmissionTrackingController extends Controller
         return $this->successResponse($batch, 'নতুন ব্যাচ সফলভাবে তৈরি হয়েছে।', 201);
     }
 
-    public function show(Request $request, $batchId): JsonResponse
+    public function show($arg1, $arg2 = null): JsonResponse
     {
-        $user = $request->user();
-        $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::findOrFail($batchId);
+        $target = ($arg1 instanceof Request) ? $arg2 : ($arg2 ?? $arg1);
+        $batch = $target instanceof SubmissionBatch ? $target : SubmissionBatch::find($target);
+        if (!$batch) {
+            return $this->errorResponse('ব্যাচটি পাওয়া যায়নি বা ইতিমধ্যে মুছে ফেলা হয়েছে।', 404);
+        }
+
+        $request = ($arg1 instanceof Request) ? $arg1 : request();
+        $user = $request ? $request->user() : null;
         $batch->load(['schoolClass:id,name_bn,name_en', 'creator:id,name']);
 
         $isAdmin = $user && $user->hasAnyRole(['super_admin', 'principal', 'academic_coordinator']);
@@ -299,9 +305,14 @@ class SubmissionTrackingController extends Controller
         ]);
     }
 
-    public function toggleActive($batchId): JsonResponse
+    public function toggleActive($arg1, $arg2 = null): JsonResponse
     {
-        $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::findOrFail($batchId);
+        $target = ($arg1 instanceof Request) ? $arg2 : ($arg2 ?? $arg1);
+        $batch = $target instanceof SubmissionBatch ? $target : SubmissionBatch::find($target);
+        if (!$batch) {
+            return $this->errorResponse('ব্যাচটি পাওয়া যায়নি।', 404);
+        }
+
         $batch->update([
             'is_active' => !$batch->is_active,
         ]);
@@ -310,7 +321,7 @@ class SubmissionTrackingController extends Controller
         return $this->successResponse($batch, "ব্যাচ স্ট্যাটাস পরিবর্তন করে {$statusText} করা হয়েছে।");
     }
 
-    public function destroy(Request $request, $batchId): JsonResponse
+    public function destroy(Request $request, $batchId = null): JsonResponse
     {
         try {
             $user = $request->user();
@@ -319,7 +330,8 @@ class SubmissionTrackingController extends Controller
                 return $this->errorResponse('আপনার এই ব্যাচটি মুছে ফেলার অনুমতি নেই।', 403);
             }
 
-            $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::find($batchId);
+            $target = $batchId ?? $request->route('batch');
+            $batch = $target instanceof SubmissionBatch ? $target : SubmissionBatch::find($target);
             if (!$batch) {
                 return $this->errorResponse('ব্যাচটি পাওয়া যায়নি বা ইতিমধ্যে মুছে ফেলা হয়েছে।', 404);
             }
@@ -356,7 +368,7 @@ class SubmissionTrackingController extends Controller
         }
     }
 
-    public function submitFiles(Request $request, $batchId): JsonResponse
+    public function submitFiles(Request $request, $batchId = null): JsonResponse
     {
         try {
             $user = $request->user();
@@ -365,7 +377,11 @@ class SubmissionTrackingController extends Controller
                 return $this->errorResponse('আপনার সেশন শেষ হয়ে গেছে। অনুগ্রহ করে পুনরায় লগইন করুন।', 401);
             }
 
-            $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::findOrFail($batchId);
+            $target = $batchId ?? $request->route('batch');
+            $batch = $target instanceof SubmissionBatch ? $target : SubmissionBatch::find($target);
+            if (!$batch) {
+                return $this->errorResponse('ব্যাচটি খুঁজে পাওয়া যায়নি বা ইতিমধ্যে বন্ধ/মুছে ফেলা হয়েছে। অনুগ্রহ করে পেজটি রিফ্রেশ করুন।', 404);
+            }
 
             if (!$batch->is_active) {
                 return $this->errorResponse('এই ব্যাচটি বর্তমানে বন্ধ বা লক করা আছে। নতুন ফাইল আপলোড করা যাবে না।', 422);
@@ -424,10 +440,10 @@ class SubmissionTrackingController extends Controller
                 $publicStorageDir = public_path('storage/' . $targetDir);
 
                 if (!is_dir($storageDir)) {
-                    @mkdir($storageDir, 0755, true);
+                    @mkdir($storageDir, 0777, true);
                 }
                 if (!is_dir($publicStorageDir)) {
-                    @mkdir($publicStorageDir, 0755, true);
+                    @mkdir($publicStorageDir, 0777, true);
                 }
 
                 if (!$batch->allow_multiple_files) {
@@ -472,7 +488,6 @@ class SubmissionTrackingController extends Controller
             return $this->errorResponse($msg, 422);
         } catch (\Throwable $e) {
             Log::error('Teacher SubmitFiles Exception: ' . $e->getMessage(), [
-                'batch_id' => $batchId ?? null,
                 'user_id' => $request->user()?->id ?? null,
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -480,7 +495,7 @@ class SubmissionTrackingController extends Controller
         }
     }
 
-    public function syncDrive($batchId): JsonResponse
+    public function syncDrive($arg1, $arg2 = null): JsonResponse
     {
         return $this->successResponse([
             'synced' => true,
@@ -497,10 +512,11 @@ class SubmissionTrackingController extends Controller
         ]);
     }
 
-    public function viewFile(Request $request, $fileId)
+    public function viewFile($arg1, $arg2 = null)
     {
         try {
-            $file = $fileId instanceof SubmissionFile ? $fileId : SubmissionFile::find($fileId);
+            $target = ($arg1 instanceof Request) ? $arg2 : ($arg2 ?? $arg1);
+            $file = $target instanceof SubmissionFile ? $target : SubmissionFile::find($target);
             if (!$file) {
                 return response('ফাইলটি পাওয়া যায়নি।', 404);
             }
@@ -523,10 +539,11 @@ class SubmissionTrackingController extends Controller
         }
     }
 
-    public function downloadFile(Request $request, $fileId)
+    public function downloadFile($arg1, $arg2 = null)
     {
         try {
-            $file = $fileId instanceof SubmissionFile ? $fileId : SubmissionFile::find($fileId);
+            $target = ($arg1 instanceof Request) ? $arg2 : ($arg2 ?? $arg1);
+            $file = $target instanceof SubmissionFile ? $target : SubmissionFile::find($target);
             if (!$file) {
                 return response('ফাইলটি পাওয়া যায়নি।', 404);
             }
@@ -586,7 +603,7 @@ class SubmissionTrackingController extends Controller
         return $mimes[$ext] ?? 'application/octet-stream';
     }
 
-    public function deleteFile(Request $request, $fileId): JsonResponse
+    public function deleteFile(Request $request, $fileId = null): JsonResponse
     {
         try {
             $user = $request->user();
@@ -594,8 +611,8 @@ class SubmissionTrackingController extends Controller
                 return $this->errorResponse('আপনার সেশন শেষ হয়ে গেছে। অনুগ্রহ করে পুনরায় লগইন করুন।', 401);
             }
 
-            // Support either model instance or integer ID
-            $file = $fileId instanceof SubmissionFile ? $fileId : SubmissionFile::find($fileId);
+            $target = $fileId ?? $request->route('file');
+            $file = $target instanceof SubmissionFile ? $target : SubmissionFile::find($target);
             if (!$file) {
                 return $this->errorResponse('ফাইলটি পাওয়া যায়নি বা ইতিমধ্যে মুছে ফেলা হয়েছে।', 404);
             }
@@ -638,16 +655,19 @@ class SubmissionTrackingController extends Controller
             return $this->successResponse(null, 'ফাইল সফলভাবে মুছে ফেলা হয়েছে।');
         } catch (\Throwable $e) {
             Log::error('Delete Submission File Error: ' . $e->getMessage(), [
-                'file_id' => is_numeric($fileId) ? $fileId : ($fileId->id ?? null),
                 'trace' => $e->getTraceAsString(),
             ]);
             return $this->errorResponse('ফাইল মোছা সম্ভব হয়নি: ' . $e->getMessage(), 500);
         }
     }
 
-    public function updateSubmissionStatus(Request $request, $submissionId): JsonResponse
+    public function updateSubmissionStatus(Request $request, $submissionId = null): JsonResponse
     {
-        $submission = $submissionId instanceof TeacherSubmission ? $submissionId : TeacherSubmission::findOrFail($submissionId);
+        $target = $submissionId ?? $request->route('submission');
+        $submission = $target instanceof TeacherSubmission ? $target : TeacherSubmission::find($target);
+        if (!$submission) {
+            return $this->errorResponse('সাবমিশনটি পাওয়া যায়নি।', 404);
+        }
 
         $validated = $request->validate([
             'status' => ['required', 'in:submitted,approved,revision_requested'],
@@ -659,10 +679,15 @@ class SubmissionTrackingController extends Controller
         return $this->successResponse($submission, 'সাবমিশন স্ট্যাটাস আপডেট হয়েছে।');
     }
 
-    public function downloadAllZip($batchId)
+    public function downloadAllZip($arg1, $arg2 = null)
     {
         try {
-            $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::findOrFail($batchId);
+            $target = ($arg1 instanceof Request) ? $arg2 : ($arg2 ?? $arg1);
+            $batch = $target instanceof SubmissionBatch ? $target : SubmissionBatch::find($target);
+            if (!$batch) {
+                return response()->json(['success' => false, 'message' => 'ব্যাচটি পাওয়া যায়নি।'], 404);
+            }
+
             $submissions = $batch->submissions()->with(['teacher.department:id,name_bn,name_en', 'files'])->get();
             if ($submissions->isEmpty()) {
                 return response()->json(['success' => false, 'message' => 'কোনো শিক্ষক এখনও ফাইল জমা দেননি।'], 404);
@@ -738,9 +763,13 @@ class SubmissionTrackingController extends Controller
         }
     }
 
-    public function exportSundayReport($batchId): JsonResponse
+    public function exportSundayReport($arg1, $arg2 = null): JsonResponse
     {
-        $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::findOrFail($batchId);
+        $target = ($arg1 instanceof Request) ? $arg2 : ($arg2 ?? $arg1);
+        $batch = $target instanceof SubmissionBatch ? $target : SubmissionBatch::find($target);
+        if (!$batch) {
+            return $this->errorResponse('ব্যাচটি পাওয়া যায়নি।', 404);
+        }
         $batch->load(['schoolClass:id,name_bn,name_en', 'creator:id,name']);
 
         $teacherRole = Role::where('name', 'teacher')->first();

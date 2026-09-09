@@ -199,7 +199,12 @@ export const SubmissionTracking: React.FC = () => {
       setUploadRemarks('');
       loadBatches(true);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'ফাইল আপলোড ব্যর্থ হয়েছে।');
+      const msg = err.response?.data?.message || err.message || 'ফাইল আপলোড ব্যর্থ হয়েছে।';
+      toast.error(msg);
+      if (err.response?.status === 404) {
+        loadBatches(true);
+        setUploadModalBatch(null);
+      }
     } finally {
       setUploading(false);
     }
