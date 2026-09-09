@@ -35,11 +35,15 @@ import { toast } from 'react-toastify';
 const TEMPLATE_VARIABLES = [
   { tag: '{name}', label: 'শিক্ষকের নাম', desc: 'যেমন: জনাব মো: আব্দুল্লাহ আল মামুন' },
   { tag: '{salutation}', label: 'সম্বোধন (Sir/Madam)', desc: 'স্বয়ংক্রিয়ভাবে Sir / Madam / জনাব / মহোদয়া' },
-  { tag: '{designation}', label: 'পদবি', desc: 'যেমন: সহকারী শিক্ষক / Senior Teacher' },
-  { tag: '{department}', label: 'বিভাগ', desc: 'যেমন: বিজ্ঞান বিভাগ / Mathematics' },
+  { tag: '{portalUrl}', label: 'পোর্টাল লিংক', desc: 'সরাসরি শিক্ষক সাবমিশন পোর্টাল লিংক' },
+  { tag: '{phone}', label: 'মোবাইল নম্বর', desc: 'শিক্ষকের রেজিস্টার্ড মোবাইল নম্বর (যেমন: 01780017602)' },
+  { tag: '{employeeId}', label: 'এমপ্লয়ী আইডি', desc: 'শিক্ষকের ইউনিক EMP ID (যেমন: BSISC-104)' },
+  { tag: '{password}', label: 'ডিফল্ট পাসওয়ার্ড', desc: 'ডিফল্ট পাসওয়ার্ড 123456' },
+  { tag: '{loginInfo}', label: 'লগইন ইনফো ব্লক', desc: 'লিংক, ইউজারনেম ও পাসওয়ার্ডের সম্পূর্ণ বক্স' },
   { tag: '{batchTitle}', label: 'লেসন প্ল্যান ব্যাচ', desc: 'যেমন: Week 12: Lesson Plan 2026' },
   { tag: '{deadline}', label: 'জমার শেষ সময়', desc: 'যেমন: শনিবার রাত ১১:৫৯' },
-  { tag: '{portalUrl}', label: 'পোর্টাল লিংক', desc: 'সরাসরি শিক্ষক সাবমিশন পোর্টাল লিংক' },
+  { tag: '{designation}', label: 'পদবি', desc: 'যেমন: সহকারী শিক্ষক / Senior Teacher' },
+  { tag: '{department}', label: 'বিভাগ', desc: 'যেমন: বিজ্ঞান বিভাগ / Mathematics' },
 ];
 
 // Helper to calculate SMS parts (Unicode vs GSM)

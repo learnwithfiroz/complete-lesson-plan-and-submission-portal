@@ -44,6 +44,9 @@ export const REMINDER_TEMPLATES: MessageTemplate[] = [
     id: 'bangla_standard',
     name: '১. স্ট্যান্ডার্ড বাংলা তাগিদ (রবিবার সকালের ফলো-আপ)',
     language: 'bn',
+    category: 'whatsapp_sms',
+    is_default: true,
+    is_system: true,
     text: `আসসালামু আলাইকুম {salutation} {name},
 
 বিএসআইএসসি (BSISC) থেকে অবহিত করা যাচ্ছে যে, '{batchTitle}'-এর লেসন প্ল্যান এখনও আপনার কাছ থেকে জমা পাওয়া যায়নি। শনিবার রাত ১১:৫৯ ছিল নির্ধারিত সময়।
@@ -56,9 +59,33 @@ export const REMINDER_TEMPLATES: MessageTemplate[] = [
 বারিধারা স্কলার্স ইন্টারন্যাশনাল স্কুল অ্যান্ড কলেজ`,
   },
   {
-    id: 'urgent_principal',
-    name: '২. অধ্যক্ষ মহোদয়ের জরুরি নোটিশ (Urgent Directive)',
+    id: 'with_login_credentials',
+    name: '২. পোর্টাল লিংক ও পাসওয়ার্ড সহ সরাসরি তাগিদ (With Password & Login Info)',
     language: 'bn',
+    category: 'whatsapp_sms',
+    is_default: false,
+    is_system: true,
+    text: `আসসালামু আলাইকুম {salutation} {name},
+
+বিএসআইএসসি (BSISC) লেসন প্ল্যান ট্র্যাকিং সিস্টেম অনুযায়ী '{batchTitle}'-এর ফাইল এখনও জমা দেওয়া হয়নি। অনুগ্রহ করে নিচের লিংকে গিয়ে সরাসরি আপলোড করুন।
+
+🔑 আপনার লগইন বিবরণ:
+🌐 পোর্টাল লিংক: {portalUrl}
+👤 ইউজারনেম/মোবাইল: {phone}
+🆔 এমপ্লয়ী আইডি: {employeeId}
+🔒 পাসওয়ার্ড: {password} (বা আপনার পরিবর্তিত পাসওয়ার্ড)
+
+ধন্যবাদ,
+একাডেমিক কো-অর্ডিনেটর ও প্রশাসন
+বিএসআইএসসি`,
+  },
+  {
+    id: 'urgent_principal',
+    name: '৩. অধ্যক্ষ মহোদয়ের জরুরি নোটিশ (Urgent Directive)',
+    language: 'bn',
+    category: 'whatsapp',
+    is_default: false,
+    is_system: true,
     text: `[জরুরি প্রাতিষ্ঠানিক নোটিশ]
 
 সম্মানিত {salutation} {name},
@@ -71,21 +98,29 @@ export const REMINDER_TEMPLATES: MessageTemplate[] = [
 বিএসআইএসসি প্রশাসন`,
   },
   {
-    id: 'bangla_short',
-    name: '৩. সংক্ষিপ্ত বাংলা এসএমএস / হোয়াটসঅ্যাপ রিমাইন্ডার',
+    id: 'bangla_short_with_pass',
+    name: '৪. সংক্ষিপ্ত এসএমএস / হোয়াটসঅ্যাপ (লিংক ও পাসওয়ার্ড সহ)',
     language: 'bn',
-    text: `সম্মানিত {name} {salutation}, আপনার '{batchTitle}'-এর লেসন প্ল্যান এখনও জমা হয়নি। দয়া করে আজ রবিবারের মধ্যে পোর্টালে জমা দিন: {portalUrl}`,
+    category: 'sms',
+    is_default: false,
+    is_system: true,
+    text: `সম্মানিত {name}, '{batchTitle}'-এর লেসন প্ল্যান দ্রুত জমা দিন: {portalUrl} | ইউজার: {phone} | পাস: 123456 - BSISC`,
   },
   {
     id: 'english_formal',
-    name: '4. English Official Reminder (Formal Notification)',
+    name: '5. English Official Reminder (Formal with Login Link)',
     language: 'en',
+    category: 'whatsapp_sms',
+    is_default: false,
+    is_system: true,
     text: `Assalamu Alaikum {salutation} {name},
 
 This is an official reminder from BSISC. Your Lesson Plan for '{batchTitle}' is currently pending submission. The designated deadline was Saturday 11:59 PM.
 
 Please upload your lesson plan document via the teacher portal as soon as possible:
-🌐 {portalUrl}
+🌐 Portal Link: {portalUrl}
+👤 Login ID: {phone} (EMP ID: {employeeId})
+🔒 Default Password: {password}
 
 Thank you,
 Academic Coordinator & Authority
@@ -122,10 +157,16 @@ export const renderReminderMessage = (
   templateText: string,
   teacher: ReminderTeacher,
   batch: ReminderBatchInfo,
-  portalUrl = DEFAULT_PORTAL_URL
+  portalUrl = DEFAULT_PORTAL_URL,
+  defaultPassword = '123456'
 ): string => {
   const salutation = teacher.salutation ? teacher.salutation : (teacher.name.toLowerCase().includes('begum') || teacher.name.toLowerCase().includes('akter') || teacher.name.toLowerCase().includes('shams') || teacher.name.toLowerCase().includes('mamataz') ? 'Madam' : 'Sir');
-  
+  const phone = teacher.phone && teacher.phone !== '0' ? teacher.phone : 'আপনার রেজিস্টার্ড মোবাইল নম্বর';
+  const employeeId = teacher.employee_id ? teacher.employee_id : 'N/A';
+  const email = teacher.email || '';
+
+  const loginInfo = `🌐 লিংক: ${portalUrl}\n👤 ইউজার: ${phone}\n🔒 পাসওয়ার্ড: ${defaultPassword}`;
+
   return templateText
     .replace(/\{name\}/g, teacher.name)
     .replace(/\{salutation\}/g, salutation)
@@ -133,7 +174,14 @@ export const renderReminderMessage = (
     .replace(/\{department\}/g, teacher.department_name || '')
     .replace(/\{batchTitle\}/g, batch.title)
     .replace(/\{deadline\}/g, batch.deadline || 'শনিবার রাত ১১:৫৯')
-    .replace(/\{portalUrl\}/g, portalUrl);
+    .replace(/\{portalUrl\}/g, portalUrl)
+    .replace(/\{phone\}/g, phone)
+    .replace(/\{mobile\}/g, phone)
+    .replace(/\{email\}/g, email)
+    .replace(/\{employeeId\}/g, employeeId)
+    .replace(/\{employee_id\}/g, employeeId)
+    .replace(/\{password\}/g, defaultPassword)
+    .replace(/\{loginInfo\}/g, loginInfo);
 };
 
 /**

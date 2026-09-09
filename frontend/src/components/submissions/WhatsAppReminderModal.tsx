@@ -285,7 +285,7 @@ export const WhatsAppReminderModal: React.FC<Props> = ({
                   <Form.Label className="fw-semibold small mb-1 d-flex justify-content-between">
                     <span>মেসেজের বিবরণ (Message Body):</span>
                     <span className="text-muted small" style={{ fontSize: '0.75rem' }}>
-                      ট্যাগ: {'{name}'}, {'{salutation}'}, {'{batchTitle}'}, {'{portalUrl}'}
+                      ট্যাগ: {'{name}'}, {'{portalUrl}'}, {'{phone}'}, {'{password}'}, {'{employeeId}'}
                     </span>
                   </Form.Label>
                   <Form.Control
