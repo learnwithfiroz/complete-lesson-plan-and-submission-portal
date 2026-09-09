@@ -46,15 +46,11 @@ export const Login: React.FC = () => {
     <div className="auth-page-wrapper">
       <div className="container py-4">
         
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-          <div className="flex-grow-1" style={{ maxWidth: '420px' }}>
-            <LiveSystemBadge variant="login" showDate={true} />
-          </div>
-
+        <div className="d-flex justify-content-end mb-3">
           <Button
             variant="outline-light"
             size="sm"
-            className="rounded-pill px-3 py-1.5 shadow-sm bg-white text-dark border-0 fw-semibold align-self-stretch align-self-sm-auto d-flex align-items-center justify-content-center"
+            className="rounded-pill px-3 py-1.5 shadow-sm bg-white text-dark border-0 fw-semibold d-flex align-items-center justify-content-center"
             onClick={() => setLanguage(language === 'bn' ? 'en' : 'bn')}
           >
             {language === 'bn' ? '🌐 English' : '🌐 বাংলা'}
@@ -67,6 +63,9 @@ export const Login: React.FC = () => {
             <Card className="auth-card shadow-lg border-0 rounded-4 overflow-hidden">
               
               <div className="auth-header text-center p-4">
+                {/* Live BD Time & IP Address Badge directly ABOVE the Logo */}
+                <LiveSystemBadge variant="above-logo" className="mb-3" />
+
                 <img
                   src="/logo.png"
                   alt="BSISC Official Logo"
