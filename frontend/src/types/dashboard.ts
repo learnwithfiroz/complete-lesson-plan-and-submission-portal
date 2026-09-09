@@ -18,6 +18,20 @@ export interface PlanBySubject {
   count: number;
 }
 
+export interface ServerStorageInfo {
+  total_bytes: number;
+  free_bytes: number;
+  used_bytes: number;
+  used_percent: number;
+  total_display: string;
+  free_display: string;
+  used_display: string;
+  php_version: string;
+  upload_max_filesize: string;
+  post_max_size: string;
+  memory_limit: string;
+}
+
 export interface DashboardStatsData {
   summary: DashboardSummary;
   submission_trends: SubmissionTrends;
@@ -29,4 +43,5 @@ export interface DashboardStatsData {
     total_subjects: number;
     active_year: string;
   } | null;
+  server_storage?: ServerStorageInfo | null;
 }

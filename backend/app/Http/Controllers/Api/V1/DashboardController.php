@@ -89,12 +89,42 @@ class DashboardController extends Controller
 
             // Institutional summary for admins
             $adminOverview = null;
+            $serverStorage = null;
             if (!$isTeacher) {
                 $adminOverview = [
                     'total_teachers' => User::whereHas('roles', fn($q) => $q->where('name', 'teacher'))->count(),
                     'total_classes' => SchoolClass::count(),
                     'total_subjects' => Subject::count(),
                     'active_year' => AcademicYear::where('is_current', true)->first()?->name ?? '2026',
+                ];
+
+                $basePath = base_path();
+                $totalSpace = @disk_total_space($basePath) ?: (50 * 1024 * 1024 * 1024);
+                $freeSpace = @disk_free_space($basePath) ?: (40 * 1024 * 1024 * 1024);
+                $usedSpace = max(0, $totalSpace - $freeSpace);
+                $usedPercent = $totalSpace > 0 ? round(($usedSpace / $totalSpace) * 100, 1) : 0;
+
+                $formatBytes = function ($bytes, $precision = 2) {
+                    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+                    $bytes = max($bytes, 0);
+                    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+                    $pow = min($pow, count($units) - 1);
+                    $bytes /= pow(1024, $pow);
+                    return round($bytes, $precision) . ' ' . $units[$pow];
+                };
+
+                $serverStorage = [
+                    'total_bytes' => $totalSpace,
+                    'free_bytes' => $freeSpace,
+                    'used_bytes' => $usedSpace,
+                    'used_percent' => $usedPercent,
+                    'total_display' => $formatBytes($totalSpace),
+                    'free_display' => $formatBytes($freeSpace),
+                    'used_display' => $formatBytes($usedSpace),
+                    'php_version' => PHP_VERSION,
+                    'upload_max_filesize' => ini_get('upload_max_filesize') ?: '40M',
+                    'post_max_size' => ini_get('post_max_size') ?: '40M',
+                    'memory_limit' => ini_get('memory_limit') ?: '512M',
                 ];
             }
 
@@ -115,6 +145,7 @@ class DashboardController extends Controller
                 'plans_by_subject' => $plansBySubject,
                 'recent_plans' => $recentPlans,
                 'admin_overview' => $adminOverview,
+                'server_storage' => $serverStorage,
             ];
 
             return $this->successResponse($data);
@@ -129,6 +160,7 @@ class DashboardController extends Controller
                 'plans_by_subject' => [],
                 'recent_plans' => [],
                 'admin_overview' => null,
+                'server_storage' => null,
             ]);
         }
     }

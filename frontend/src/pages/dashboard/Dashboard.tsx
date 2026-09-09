@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Table } from 'react-bootstrap';
+import { Row, Col, Card, Table, ProgressBar } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { useTranslation } from '../../locales/i18n';
-import { FileText, CheckCircle, Clock, RotateCcw, Plus, ArrowRight, Megaphone, Pin, Paperclip, CheckSquare } from 'lucide-react';
+import { FileText, CheckCircle, Clock, RotateCcw, Plus, ArrowRight, Megaphone, Pin, Paperclip, CheckSquare, HardDrive } from 'lucide-react';
 import { dashboardApi } from '../../api/dashboard';
 import { noticeApi } from '../../api/notices';
 import type { DashboardStatsData } from '../../types/dashboard';
@@ -246,6 +246,74 @@ export const Dashboard: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* cPanel & Server Hosting Resource Widget (For Admin & Leadership) */}
+      {!isTeacher && stats?.server_storage && (
+        <Card className="border shadow-sm mb-4 rounded-3 overflow-hidden bg-white">
+          <Card.Header className="bg-light bg-opacity-75 border-bottom py-2.5 px-3 px-md-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div className="d-flex align-items-center gap-2">
+              <div className="p-1.5 bg-primary bg-opacity-10 text-primary rounded-2">
+                <HardDrive size={18} />
+              </div>
+              <div>
+                <span className="fw-bold text-dark" style={{ fontSize: '14px' }}>
+                  সার্ভার ও cPanel স্টোরেজ মনিটর (Storage & Server Resources)
+                </span>
+                <span className="text-muted ms-2 small d-none d-md-inline">
+                  হোস্টিং ক্যাপাসিটি ও ফাইল স্পেস ওভারভিউ
+                </span>
+              </div>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2.5 py-1 small">
+                ● সার্ভার সক্রিয় (PHP {stats.server_storage.php_version})
+              </span>
+            </div>
+          </Card.Header>
+          <Card.Body className="p-3 p-md-4">
+            <Row className="g-3 align-items-center">
+              {/* Progress & Quick Metrics */}
+              <Col lg={7}>
+                <div className="d-flex justify-content-between align-items-baseline mb-1">
+                  <span className="small text-muted fw-semibold">ব্যবহৃত ডিস্ক স্পেস (Used Disk Space)</span>
+                  <span className="fw-bold text-dark font-monospace" style={{ fontSize: '14px' }}>
+                    {stats.server_storage.used_display} / {stats.server_storage.total_display} ({stats.server_storage.used_percent}%)
+                  </span>
+                </div>
+                <ProgressBar
+                  now={stats.server_storage.used_percent}
+                  variant={stats.server_storage.used_percent > 85 ? 'danger' : stats.server_storage.used_percent > 70 ? 'warning' : 'primary'}
+                  style={{ height: '10px', borderRadius: '6px' }}
+                  className="mb-2 shadow-xs"
+                />
+                <div className="d-flex justify-content-between text-muted" style={{ fontSize: '12px' }}>
+                  <span><span className="fw-semibold text-success">অবশিষ্ট খালি স্পেস:</span> {stats.server_storage.free_display}</span>
+                  <span><span className="fw-semibold text-primary">হোস্টিং মোট সাইজ:</span> {stats.server_storage.total_display}</span>
+                </div>
+              </Col>
+
+              {/* Server Details Grid */}
+              <Col lg={5}>
+                <div className="p-2.5 bg-light rounded-3 border d-flex justify-content-around text-center">
+                  <div>
+                    <div className="text-muted" style={{ fontSize: '11px' }}>আপলোড লিমিট</div>
+                    <div className="fw-bold text-dark font-monospace small">{stats.server_storage.upload_max_filesize}</div>
+                  </div>
+                  <div className="border-start ps-3">
+                    <div className="text-muted" style={{ fontSize: '11px' }}>পিএইচপি মেমোরি</div>
+                    <div className="fw-bold text-dark font-monospace small">{stats.server_storage.memory_limit}</div>
+                  </div>
+                  <div className="border-start ps-3">
+                    <div className="text-muted" style={{ fontSize: '11px' }}>ডাটাবেস ড্রাইভ</div>
+                    <div className="fw-bold text-success font-monospace small">MySQL / Active</div>
+                  </div>
+                </div>
+              </Col>
+            </Row>
+          </Card.Body>
+        </Card>
+      )}
+
       {/* Charts Row */}
       <Row className="g-3 mb-4">
         <Col md={8}>
