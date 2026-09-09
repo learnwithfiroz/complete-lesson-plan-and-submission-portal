@@ -30,7 +30,8 @@ import {
   Users,
   TrendingUp,
   Sparkles,
-  X
+  X,
+  Eye
 } from 'lucide-react';
 import { submissionTrackingApi } from '../../api/submissionTracking';
 import type { BatchDetailResponse, SundayReportData } from '../../types/submissionTracking';
@@ -630,14 +631,25 @@ export const SubmissionBatchDetails: React.FC = () => {
 
                               <div className="d-flex align-items-center gap-1.5 flex-shrink-0">
                                 <a
-                                  href={file.file_url}
+                                  href={file.download_url || file.file_url}
+                                  download={file.file_name}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="btn btn-sm btn-outline-primary py-1 px-3 d-flex align-items-center text-decoration-none rounded-pill fw-semibold shadow-xs"
-                                  title="ফাইলটি সরাসরি ডাউনলোড বা ভিউ করুন"
+                                  title="ফাইলটি সরাসরি ডাউনলোড করুন"
                                 >
                                   <Download size={13} className="me-1.5" />
                                   ডাউনলোড
+                                </a>
+                                <a
+                                  href={file.file_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="btn btn-sm btn-light border py-1 px-2.5 d-flex align-items-center text-decoration-none rounded-pill text-secondary fw-semibold shadow-xs"
+                                  title="ব্রাউজারে সরাসরি ভিউ বা প্রিভিউ দেখুন"
+                                >
+                                  <Eye size={13} className="me-1 text-primary" />
+                                  ভিউ
                                 </a>
 
                                 {batch.is_active && (
@@ -1035,18 +1047,30 @@ export const SubmissionBatchDetails: React.FC = () => {
                             {t.files && t.files.length > 0 ? (
                               <div className="d-flex flex-column gap-1">
                                 {t.files.map((file) => (
-                                  <a
-                                    key={file.id}
-                                    href={file.file_url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="file-download-chip"
-                                    title={`Download ${file.file_name}`}
-                                  >
-                                    <Paperclip size={12} className="text-primary" />
-                                    <span>{file.file_name.length > 20 ? file.file_name.substring(0, 18) + '...' : file.file_name}</span>
-                                    <Download size={11} className="text-muted ms-1" />
-                                  </a>
+                                  <div key={file.id} className="d-flex align-items-center gap-1">
+                                    <a
+                                      href={file.download_url || file.file_url}
+                                      download={file.file_name}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="file-download-chip d-flex align-items-center text-decoration-none"
+                                      title={`ডাউনলোড করুন: ${file.file_name}`}
+                                    >
+                                      <Paperclip size={12} className="text-primary me-1" />
+                                      <span className="text-truncate" style={{ maxWidth: '140px' }}>{file.file_name}</span>
+                                      <Download size={12} className="text-success ms-1 flex-shrink-0" />
+                                    </a>
+                                    <a
+                                      href={file.file_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="btn btn-sm btn-light border p-1 d-flex align-items-center justify-content-center rounded-2"
+                                      style={{ width: '26px', height: '26px' }}
+                                      title={`ব্রাউজারে ভিউ দেখুন: ${file.file_name}`}
+                                    >
+                                      <Eye size={12} className="text-primary" />
+                                    </a>
+                                  </div>
                                 ))}
                               </div>
                             ) : (

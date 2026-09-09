@@ -4,6 +4,7 @@ export interface SubmissionFile {
   id: number;
   file_name: string;
   file_url: string;
+  download_url?: string;
   file_size: number;
   file_type?: string;
   gdrive_file_id?: string | null;

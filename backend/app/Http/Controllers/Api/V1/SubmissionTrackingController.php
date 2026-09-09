@@ -341,8 +341,10 @@ class SubmissionTrackingController extends Controller
             foreach ($submissions as $sub) {
                 foreach ($sub->files as $f) {
                     if ($f->file_path) {
-                        @unlink(storage_path('app/public/' . $f->file_path));
-                        @unlink(public_path('storage/' . $f->file_path));
+                        $resolved = $this->resolvePhysicalFilePath($f->file_path);
+                        if ($resolved) {
+                            @unlink($resolved);
+                        }
                     }
                 }
             }
@@ -449,8 +451,10 @@ class SubmissionTrackingController extends Controller
                 if (!$batch->allow_multiple_files) {
                     foreach ($submission->files as $existingFile) {
                         if ($existingFile->file_path) {
-                            @unlink(storage_path('app/public/' . $existingFile->file_path));
-                            @unlink(public_path('storage/' . $existingFile->file_path));
+                            $resolvedOld = $this->resolvePhysicalFilePath($existingFile->file_path);
+                            if ($resolvedOld) {
+                                @unlink($resolvedOld);
+                            }
                         }
                     }
                     $submission->files()->delete();
@@ -553,7 +557,17 @@ class SubmissionTrackingController extends Controller
                 return response('সার্ভারে ফাইলটি খুঁজে পাওয়া যায়নি।', 404);
             }
 
-            return response()->download($resolvedPath, $file->file_name);
+            $mime = $this->getMimeType($file->file_name, $resolvedPath);
+            $cleanDownloadName = preg_replace('/[^a-zA-Z0-9_\.\-]/', '_', $file->file_name);
+            if (empty($cleanDownloadName)) {
+                $cleanDownloadName = 'file_' . $file->id . '.' . ($file->file_type ?: 'dat');
+            }
+
+            return response()->download($resolvedPath, $cleanDownloadName, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'attachment; filename="' . $cleanDownloadName . '"',
+                'Cache-Control' => 'public, must-revalidate',
+            ]);
         } catch (\Throwable $e) {
             Log::error('Download File Error: ' . $e->getMessage());
             return response('ফাইল ডাউনলোডে সমস্যা হয়েছে: ' . $e->getMessage(), 500);
@@ -564,17 +578,39 @@ class SubmissionTrackingController extends Controller
     {
         if (!$filePath) return null;
 
+        $cleanPath = ltrim(str_replace('\\', '/', $filePath), '/');
+        $withoutStorage = preg_replace('#^(public/|storage/|app/public/)+#i', '', $cleanPath);
+
         $candidates = [
-            storage_path('app/public/' . $filePath),
-            public_path('storage/' . $filePath),
-            storage_path('app/' . $filePath),
-            base_path('storage/app/public/' . $filePath),
-            public_path($filePath),
+            storage_path('app/public/' . $withoutStorage),
+            public_path('storage/' . $withoutStorage),
+            storage_path('app/' . $withoutStorage),
+            storage_path('app/public/' . $cleanPath),
+            public_path('storage/' . $cleanPath),
+            public_path($cleanPath),
+            public_path($withoutStorage),
+            base_path('storage/app/public/' . $withoutStorage),
+            base_path($cleanPath),
         ];
 
         foreach ($candidates as $path) {
             if (file_exists($path) && is_file($path)) {
                 return $path;
+            }
+        }
+
+        // Fallback: search by filename in submissions folder
+        $baseFilename = basename($cleanPath);
+        $searchDirs = [
+            storage_path('app/public/submissions'),
+            public_path('storage/submissions'),
+        ];
+        foreach ($searchDirs as $dir) {
+            if (is_dir($dir)) {
+                $files = @glob($dir . '/*/*/' . $baseFilename);
+                if (!empty($files) && file_exists($files[0])) {
+                    return $files[0];
+                }
             }
         }
 
@@ -621,8 +657,10 @@ class SubmissionTrackingController extends Controller
             if (!$submission) {
                 // Delete orphan record
                 if ($file->file_path) {
-                    @unlink(storage_path('app/public/' . $file->file_path));
-                    @unlink(public_path('storage/' . $file->file_path));
+                    $resolved = $this->resolvePhysicalFilePath($file->file_path);
+                    if ($resolved) {
+                        @unlink($resolved);
+                    }
                 }
                 $file->delete();
                 return $this->successResponse(null, 'ফাইল সফলভাবে মুছে ফেলা হয়েছে।');
@@ -641,8 +679,10 @@ class SubmissionTrackingController extends Controller
 
             // Physically remove local file from both locations
             if ($file->file_path) {
-                @unlink(storage_path('app/public/' . $file->file_path));
-                @unlink(public_path('storage/' . $file->file_path));
+                $resolved = $this->resolvePhysicalFilePath($file->file_path);
+                if ($resolved) {
+                    @unlink($resolved);
+                }
             }
 
             $file->delete();

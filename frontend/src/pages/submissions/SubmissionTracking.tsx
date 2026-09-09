@@ -823,10 +823,12 @@ export const SubmissionTracking: React.FC = () => {
                 {uploadModalBatch.my_submission.files.map((f) => (
                   <a
                     key={f.id}
-                    href={f.file_url}
+                    href={f.download_url || f.file_url}
+                    download={f.file_name}
                     target="_blank"
                     rel="noreferrer"
                     className="badge bg-white text-primary border p-2 text-decoration-none d-flex align-items-center rounded-2 shadow-xs"
+                    title={`ডাউনলোড করুন: ${f.file_name}`}
                   >
                     <Paperclip size={13} className="me-1 text-primary" />
                     {f.file_name}
