@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { SundayReportData } from '../../types/submissionTracking';
 import { openWhatsAppChat, renderReminderMessage, REMINDER_TEMPLATES } from '../../utils/whatsappReminder';
+import { getBangladeshLiveTime } from '../../utils/printReport';
 import { toast } from 'react-toastify';
 
 interface Props {
@@ -39,6 +40,7 @@ export const ProfessionalSundayReport: React.FC<Props> = ({ data, onPrint, onOpe
     toast.success(`মোট ${phones.length} জন মিসিং শিক্ষকের ফোন নম্বর কপি করা হয়েছে! (SMS / WhatsApp এ পেস্ট করতে পারেন)`);
   };
 
+  const liveReportTime = getBangladeshLiveTime();
   const isAllSubmitted = data.summary.not_submitted_count === 0 && data.summary.total_teachers > 0;
 
   return (
@@ -154,7 +156,7 @@ export const ProfessionalSundayReport: React.FC<Props> = ({ data, onPrint, onOpe
             </div>
             <div className="mb-1">
               <Calendar size={13} className="me-1 text-primary" />
-              <strong>রিপোর্ট প্রস্তুতের সময়:</strong> {data.generated_at}
+              <strong>রিপোর্ট প্রস্তুতের সময়:</strong> {liveReportTime}
             </div>
             <div>
               <strong>স্ট্যাটাস:</strong>{' '}
@@ -501,7 +503,7 @@ export const ProfessionalSundayReport: React.FC<Props> = ({ data, onPrint, onOpe
             🔒 <strong>Confidential:</strong> Internal Academic Tracking & Administrative Quality Audit Record.
           </div>
           <div className="font-monospace">
-            Generated Automatically by BSISC Academic ERP Portal | {data.generated_at}
+            Generated Automatically by BSISC Academic ERP Portal | {liveReportTime}
           </div>
         </div>
       </div>

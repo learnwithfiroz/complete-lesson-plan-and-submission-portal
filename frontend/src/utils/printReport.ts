@@ -1,6 +1,31 @@
 import type { SundayReportData } from '../types/submissionTracking';
 
+export const getBangladeshLiveTime = (): string => {
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: 'Asia/Dhaka',
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  };
+  const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(now);
+  const weekday = parts.find(p => p.type === 'weekday')?.value || '';
+  const day = parts.find(p => p.type === 'day')?.value || '';
+  const month = parts.find(p => p.type === 'month')?.value || '';
+  const year = parts.find(p => p.type === 'year')?.value || '';
+  const hour = parts.find(p => p.type === 'hour')?.value || '';
+  const minute = parts.find(p => p.type === 'minute')?.value || '';
+  const dayPeriod = parts.find(p => p.type === 'dayPeriod')?.value || '';
+
+  return `${weekday}, ${day} ${month} ${year} - ${hour}:${minute} ${dayPeriod}`;
+};
+
 export const printOfficialSundayReport = (data: SundayReportData) => {
+  const liveTime = getBangladeshLiveTime();
   const printWindow = window.open('', '_blank', 'width=1000,height=800');
   if (!printWindow) {
     alert('Popup blocker is preventing print window. Please allow popups for this site.');
@@ -333,7 +358,7 @@ export const printOfficialSundayReport = (data: SundayReportData) => {
         </div>
         <div class="meta-col" style="text-align: right;">
           <div><strong style="color: #dc2626;">ডেডলাইন:</strong> ${data.batch.deadline_display}</div>
-          <div><strong>রিপোর্ট প্রস্তুতের সময়:</strong> ${data.generated_at}</div>
+          <div><strong>রিপোর্ট প্রস্তুতের সময়:</strong> ${liveTime || data.generated_at}</div>
           <div><strong>সম্পূর্ণতার হার:</strong> <strong style="color: #1e40af;">${data.summary.completion_percent}%</strong></div>
         </div>
       </div>
@@ -420,7 +445,7 @@ export const printOfficialSundayReport = (data: SundayReportData) => {
       <!-- Confidential Footer -->
       <div class="footer-note">
         <div>🔒 <strong>Confidential:</strong> Internal Academic Monitoring & Institutional Quality Audit Record.</div>
-        <div>Generated Automatically by BSISC Academic ERP System | ${data.generated_at}</div>
+        <div>Generated Automatically by BSISC Academic ERP System | ${liveTime || data.generated_at}</div>
       </div>
 
       <script>

@@ -880,7 +880,7 @@ class SubmissionTrackingController extends Controller
                 'deadline_display' => $batch->end_date ? $batch->end_date->format('l, d F Y (রাত ১১:৫৯)') : '',
                 'gdrive_folder_url' => $batch->gdrive_folder_url,
             ],
-            'generated_at' => now()->format('l, d F Y - h:i A'),
+            'generated_at' => now('Asia/Dhaka')->format('l, d F Y - h:i A'),
             'summary' => [
                 'total_teachers' => $teachers->count(),
                 'submitted_count' => count($submittedList),
