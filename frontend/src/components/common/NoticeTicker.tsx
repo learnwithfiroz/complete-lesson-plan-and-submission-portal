@@ -17,7 +17,7 @@ export const NoticeTicker: React.FC = () => {
 
   useEffect(() => {
     loadTicker();
-    const interval = setInterval(loadTicker, 10000); // Fast live poll every 10s
+    const interval = setInterval(loadTicker, 4000); // Live poll every 4s
 
     const handleUpdate = () => {
       loadTicker();
@@ -25,6 +25,8 @@ export const NoticeTicker: React.FC = () => {
 
     // 1. Same-tab custom event
     window.addEventListener('notices-updated', handleUpdate);
+    window.addEventListener('focus', handleUpdate);
+    document.addEventListener('visibilitychange', handleUpdate);
 
     // 2. Cross-tab BroadcastChannel
     let broadcastChannel: BroadcastChannel | null = null;
@@ -52,6 +54,8 @@ export const NoticeTicker: React.FC = () => {
     return () => {
       clearInterval(interval);
       window.removeEventListener('notices-updated', handleUpdate);
+      window.removeEventListener('focus', handleUpdate);
+      document.removeEventListener('visibilitychange', handleUpdate);
       window.removeEventListener('storage', handleStorage);
       if (broadcastChannel) {
         broadcastChannel.close();
@@ -91,10 +95,16 @@ export const NoticeTicker: React.FC = () => {
     return null;
   }
 
-  // Duplicate notices for seamless infinite marquee loop
-  const marqueeItems = notices.length > 0 ? [...notices, ...notices] : [];
-  // Calculate dynamic duration based on count (e.g. 15s per notice set, min 25s)
-  const scrollDuration = Math.max(25, notices.length * 15);
+  // Duplicate notices for seamless continuous infinite marquee loop
+  const marqueeItems =
+    notices.length === 1
+      ? [...notices, ...notices, ...notices, ...notices, ...notices, ...notices]
+      : notices.length === 2
+      ? [...notices, ...notices, ...notices, ...notices]
+      : [...notices, ...notices];
+
+  // Calculate dynamic duration based on count (e.g. 18s per loop, min 22s)
+  const scrollDuration = Math.max(22, notices.length * 14);
 
   return (
     <>

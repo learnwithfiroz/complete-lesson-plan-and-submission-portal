@@ -46,6 +46,45 @@ export const Dashboard: React.FC = () => {
 
   useEffect(() => {
     loadStats();
+    const interval = setInterval(loadStats, 10000); // Poll dashboard stats & notices every 10s
+
+    const handleUpdate = () => {
+      loadStats();
+    };
+
+    window.addEventListener('notices-updated', handleUpdate);
+    window.addEventListener('focus', handleUpdate);
+
+    let broadcastChannel: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        broadcastChannel = new BroadcastChannel('bsisc_notices_channel');
+        broadcastChannel.onmessage = (event) => {
+          if (event.data?.type === 'notices-updated') {
+            loadStats();
+          }
+        };
+      }
+    } catch {
+      // fallback
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'bsisc_notices_last_update') {
+        loadStats();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notices-updated', handleUpdate);
+      window.removeEventListener('focus', handleUpdate);
+      window.removeEventListener('storage', handleStorage);
+      if (broadcastChannel) {
+        broadcastChannel.close();
+      }
+    };
   }, []);
 
   const loadStats = async () => {

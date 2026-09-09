@@ -79,28 +79,12 @@ class NoticeController extends Controller
 
         $query = Notice::active()
             ->forAudience($user)
-            ->where(function ($q) {
-                $q->where('is_pinned', true)
-                  ->orWhere('priority', 'urgent')
-                  ->orWhere('priority', 'high');
-            })
             ->pinnedFirst()
-            ->limit(10)
+            ->limit(20)
             ->get([
-                'id', 'title_bn', 'title_en', 'category', 'priority', 
+                'id', 'title_bn', 'title_en', 'content_bn', 'content_en', 'category', 'priority', 
                 'is_pinned', 'publish_date', 'created_at'
             ]);
-
-        if ($query->isEmpty()) {
-            $query = Notice::active()
-                ->forAudience($user)
-                ->orderByDesc('created_at')
-                ->limit(5)
-                ->get([
-                    'id', 'title_bn', 'title_en', 'category', 'priority', 
-                    'is_pinned', 'publish_date', 'created_at'
-                ]);
-        }
 
         return response()->json([
             'success' => true,
