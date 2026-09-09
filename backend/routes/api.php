@@ -179,15 +179,11 @@ Route::prefix('v1')->group(function () {
         Route::get('/submission-tracking', [SubmissionTrackingController::class, 'index']);
         Route::post('/submission-tracking', [SubmissionTrackingController::class, 'store']);
         Route::get('/submission-tracking/{batch}', [SubmissionTrackingController::class, 'show']);
-        Route::post('/submission-tracking/{batch}/sync-drive', [SubmissionTrackingController::class, 'syncDrive']);
-        Route::get('/submission-tracking/{batch}/download-all-zip', [SubmissionTrackingController::class, 'downloadAllZip']);
         Route::get('/submission-tracking/{batch}/sunday-report', [SubmissionTrackingController::class, 'exportSundayReport']);
         Route::patch('/submission-tracking/{batch}/toggle-active', [SubmissionTrackingController::class, 'toggleActive']);
         Route::delete('/submission-tracking/{batch}', [SubmissionTrackingController::class, 'destroy']);
         Route::post('/submission-tracking/{batch}/submit', [SubmissionTrackingController::class, 'submitFiles']);
         Route::delete('/submission-tracking/files/{file}', [SubmissionTrackingController::class, 'deleteFile']);
-        Route::get('/submission-tracking/files/{file}/view', [SubmissionTrackingController::class, 'viewFile']);
-        Route::get('/submission-tracking/files/{file}/download', [SubmissionTrackingController::class, 'downloadFile']);
         Route::patch('/submission-tracking/submissions/{submission}/status', [SubmissionTrackingController::class, 'updateSubmissionStatus']);
 
         // Dynamic Form Studio & Schema Builder CRUD

@@ -899,8 +899,8 @@ export const SubmissionTracking: React.FC = () => {
       {/* Confirm Delete Dialog */}
       <ConfirmDialog
         show={!!deleteBatchId}
-        title="ব্যাচ মুছে ফেলার নিশ্চিতকরণ"
-        message="আপনি কি নিশ্চিত যে এই ব্যাচ এবং এর সাথে সম্পর্কিত সকল শিক্ষক সাবমিশন ডাটা ডিলিট করতে চান?"
+        title="ব্যাচ স্থায়ীভাবে মুছে ফেলার নিশ্চিতকরণ"
+        message="আপনি কি নিশ্চিত যে এই ব্যাচ এবং এর সাথে সম্পর্কিত সকল জমাকৃত ফাইল ও ডাটা সার্ভার থেকে স্থায়ীভাবে মুছে ফেলতে চান? এই কাজটি ফিরিয়ে আনা সম্ভব নয়।"
         confirmText="ডিলিট করুন"
         cancelText="বাতিল"
         variant="danger"

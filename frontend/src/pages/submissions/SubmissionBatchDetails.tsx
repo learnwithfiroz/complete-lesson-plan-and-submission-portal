@@ -198,6 +198,20 @@ export const SubmissionBatchDetails: React.FC = () => {
     }
   };
 
+  // Admin Action: Delete Batch
+  const handleDeleteBatch = async () => {
+    if (!id || !window.confirm('আপনি কি নিশ্চিত যে এই ব্যাচ এবং এর সাথে সম্পর্কিত সকল জমাকৃত ফাইল ও ডাটা সার্ভার থেকে স্থায়ীভাবে মুছে ফেলতে চান? এই কাজটি ফিরিয়ে আনা সম্ভব নয়।')) {
+      return;
+    }
+    try {
+      await submissionTrackingApi.deleteBatch(Number(id));
+      toast.success('ব্যাচ ও সকল ফাইল সফলভাবে ডিলিট করা হয়েছে।');
+      navigate('/submission-tracking');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'ব্যাচ মোছা সম্ভব হয়নি।');
+    }
+  };
+
   const formatFileSize = (bytes?: number): string => {
     if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
@@ -379,6 +393,18 @@ export const SubmissionBatchDetails: React.FC = () => {
                     <Unlock size={14} className="me-1 text-white" /> সক্রিয় করুন
                   </>
                 )}
+              </Button>
+
+              <Button
+                variant="outline-danger"
+                size="sm"
+                className="d-flex align-items-center border-0 px-2.5 py-1 fw-semibold"
+                style={{ backgroundColor: '#fef2f2', color: '#dc2626' }}
+                onClick={handleDeleteBatch}
+                title="ব্যাচ ও সম্পর্কিত সকল ফাইল স্থায়ীভাবে মুছে ফেলুন"
+              >
+                <Trash2 size={14} className="me-1 text-danger" />
+                <span>ডিলিট করুন</span>
               </Button>
             </div>
           </div>
