@@ -121,7 +121,7 @@ export const SubmissionBatchDetails: React.FC = () => {
       await submissionTrackingApi.downloadAllZip(data.batch.id, data.batch.title);
       toast.success('সকল জমা হওয়া ফাইল ZIP আকারে ডাউনলোড শুরু হয়েছে!');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'ZIP ফাইল ডাউনলোডে সমস্যা হয়েছে। জমা হওয়া ফাইল নাও থাকতে পারে।');
+      toast.error(err.message || err.response?.data?.message || 'ZIP ফাইল ডাউনলোডে সমস্যা হয়েছে। জমা হওয়া ফাইল নাও থাকতে পারে।');
     } finally {
       setDownloadingZip(false);
     }

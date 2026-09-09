@@ -28,6 +28,7 @@ class SubmissionFile extends Model
 
     protected $appends = [
         'file_url',
+        'download_url',
     ];
 
     public function submission(): BelongsTo
@@ -37,6 +38,11 @@ class SubmissionFile extends Model
 
     public function getFileUrlAttribute(): string
     {
-        return url('storage/' . $this->file_path);
+        return url('api/v1/submission-tracking/files/' . $this->id . '/view');
+    }
+
+    public function getDownloadUrlAttribute(): string
+    {
+        return url('api/v1/submission-tracking/files/' . $this->id . '/download');
     }
 }

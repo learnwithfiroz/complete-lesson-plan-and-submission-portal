@@ -8,6 +8,7 @@ use App\Models\SubmissionBatch;
 use App\Models\SubmissionFile;
 use App\Models\TeacherSubmission;
 use App\Models\User;
+use App\Services\ZipBuilder;
 use App\Traits\ApiResponseTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -85,6 +86,7 @@ class SubmissionTrackingController extends Controller
                             'id' => $f->id,
                             'file_name' => $f->file_name,
                             'file_url' => $f->file_url,
+                            'download_url' => $f->download_url,
                             'file_size' => $f->file_size,
                             'file_type' => $f->file_type,
                             'gdrive_file_id' => $f->gdrive_file_id,
@@ -195,6 +197,7 @@ class SubmissionTrackingController extends Controller
                     'id' => $f->id,
                     'file_name' => $f->file_name,
                     'file_url' => $f->file_url,
+                    'download_url' => $f->download_url,
                     'file_size' => $f->file_size,
                     'file_type' => $f->file_type,
                     'gdrive_file_id' => $f->gdrive_file_id,
@@ -252,6 +255,7 @@ class SubmissionTrackingController extends Controller
                         'id' => $f->id,
                         'file_name' => $f->file_name,
                         'file_url' => $f->file_url,
+                        'download_url' => $f->download_url,
                         'file_size' => $f->file_size,
                         'file_type' => $f->file_type,
                         'gdrive_file_id' => $f->gdrive_file_id,
@@ -325,18 +329,20 @@ class SubmissionTrackingController extends Controller
             foreach ($submissions as $sub) {
                 foreach ($sub->files as $f) {
                     if ($f->file_path) {
-                        $localPath = storage_path('app/public/' . $f->file_path);
-                        if (file_exists($localPath)) {
-                            @unlink($localPath);
-                        }
+                        @unlink(storage_path('app/public/' . $f->file_path));
+                        @unlink(public_path('storage/' . $f->file_path));
                     }
                 }
             }
 
-            // Remove batch folder if exists
-            $batchDir = storage_path("app/public/submissions/{$batch->id}");
-            if (is_dir($batchDir)) {
-                @File::deleteDirectory($batchDir);
+            // Remove batch folders if exist
+            $batchDir1 = storage_path("app/public/submissions/{$batch->id}");
+            if (is_dir($batchDir1)) {
+                @File::deleteDirectory($batchDir1);
+            }
+            $batchDir2 = public_path("storage/submissions/{$batch->id}");
+            if (is_dir($batchDir2)) {
+                @File::deleteDirectory($batchDir2);
             }
 
             $batch->delete();
@@ -402,7 +408,6 @@ class SubmissionTrackingController extends Controller
                 );
 
                 if (!$submission->wasRecentlyCreated) {
-                    // This is an update / revision
                     $submission->increment('update_count');
                     $submission->update([
                         'last_updated_at' => now(),
@@ -414,39 +419,45 @@ class SubmissionTrackingController extends Controller
                     $submission->update(['remarks' => $request->input('remarks')]);
                 }
 
+                $targetDir = "submissions/{$batch->id}/{$user->id}";
+                $storageDir = storage_path('app/public/' . $targetDir);
+                $publicStorageDir = public_path('storage/' . $targetDir);
+
+                if (!is_dir($storageDir)) {
+                    @mkdir($storageDir, 0755, true);
+                }
+                if (!is_dir($publicStorageDir)) {
+                    @mkdir($publicStorageDir, 0755, true);
+                }
+
                 if (!$batch->allow_multiple_files) {
-                    // Remove existing files physically and from DB if single file mode
                     foreach ($submission->files as $existingFile) {
                         if ($existingFile->file_path) {
-                            $oldPath = storage_path('app/public/' . $existingFile->file_path);
-                            if (file_exists($oldPath)) {
-                                @unlink($oldPath);
-                            }
+                            @unlink(storage_path('app/public/' . $existingFile->file_path));
+                            @unlink(public_path('storage/' . $existingFile->file_path));
                         }
                     }
                     $submission->files()->delete();
                 }
 
                 $uploadedFiles = [];
-                $targetDir = "submissions/{$batch->id}/{$user->id}";
-                $targetFullPath = storage_path('app/public/' . $targetDir);
-                if (!file_exists($targetFullPath)) {
-                    @mkdir($targetFullPath, 0755, true);
-                }
-
                 foreach ($request->file('files') as $file) {
                     $originalName = $file->getClientOriginalName();
                     $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $originalName);
                     
-                    // Safe move without finfo requirement
-                    $file->move($targetFullPath, $filename);
+                    // Move to storage/app/public
+                    $file->move($storageDir, $filename);
+                    
+                    // Also copy to public/storage for fallback
+                    @copy($storageDir . '/' . $filename, $publicStorageDir . '/' . $filename);
+
                     $path = $targetDir . '/' . $filename;
 
                     $subFile = SubmissionFile::create([
                         'submission_id' => $submission->id,
                         'file_path' => $path,
                         'file_name' => $originalName,
-                        'file_size' => @filesize($targetFullPath . '/' . $filename) ?: $file->getSize(),
+                        'file_size' => @filesize($storageDir . '/' . $filename) ?: $file->getSize(),
                         'file_type' => strtolower($file->getClientOriginalExtension() ?: pathinfo($originalName, PATHINFO_EXTENSION)),
                     ]);
                     $uploadedFiles[] = $subFile;
@@ -486,6 +497,95 @@ class SubmissionTrackingController extends Controller
         ]);
     }
 
+    public function viewFile(Request $request, $fileId)
+    {
+        try {
+            $file = $fileId instanceof SubmissionFile ? $fileId : SubmissionFile::find($fileId);
+            if (!$file) {
+                return response('ফাইলটি পাওয়া যায়নি।', 404);
+            }
+
+            $resolvedPath = $this->resolvePhysicalFilePath($file->file_path);
+            if (!$resolvedPath || !file_exists($resolvedPath)) {
+                return response('সার্ভারের স্টোরেজে ফাইলটি খুঁজে পাওয়া যায়নি।', 404);
+            }
+
+            $mime = $this->getMimeType($file->file_name, $resolvedPath);
+
+            return response()->file($resolvedPath, [
+                'Content-Type' => $mime,
+                'Content-Disposition' => 'inline; filename="' . rawurlencode($file->file_name) . '"',
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('View File Error: ' . $e->getMessage());
+            return response('ফাইল প্রদর্শনে সমস্যা হয়েছে: ' . $e->getMessage(), 500);
+        }
+    }
+
+    public function downloadFile(Request $request, $fileId)
+    {
+        try {
+            $file = $fileId instanceof SubmissionFile ? $fileId : SubmissionFile::find($fileId);
+            if (!$file) {
+                return response('ফাইলটি পাওয়া যায়নি।', 404);
+            }
+
+            $resolvedPath = $this->resolvePhysicalFilePath($file->file_path);
+            if (!$resolvedPath || !file_exists($resolvedPath)) {
+                return response('সার্ভারে ফাইলটি খুঁজে পাওয়া যায়নি।', 404);
+            }
+
+            return response()->download($resolvedPath, $file->file_name);
+        } catch (\Throwable $e) {
+            Log::error('Download File Error: ' . $e->getMessage());
+            return response('ফাইল ডাউনলোডে সমস্যা হয়েছে: ' . $e->getMessage(), 500);
+        }
+    }
+
+    private function resolvePhysicalFilePath(?string $filePath): ?string
+    {
+        if (!$filePath) return null;
+
+        $candidates = [
+            storage_path('app/public/' . $filePath),
+            public_path('storage/' . $filePath),
+            storage_path('app/' . $filePath),
+            base_path('storage/app/public/' . $filePath),
+            public_path($filePath),
+        ];
+
+        foreach ($candidates as $path) {
+            if (file_exists($path) && is_file($path)) {
+                return $path;
+            }
+        }
+
+        return null;
+    }
+
+    private function getMimeType(string $filename, string $path): string
+    {
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $mimes = [
+            'pdf' => 'application/pdf',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls' => 'application/vnd.ms-excel',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'ppt' => 'application/vnd.ms-powerpoint',
+            'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'txt' => 'text/plain; charset=utf-8',
+            'zip' => 'application/zip',
+        ];
+
+        return $mimes[$ext] ?? 'application/octet-stream';
+    }
+
     public function deleteFile(Request $request, $fileId): JsonResponse
     {
         try {
@@ -504,10 +604,8 @@ class SubmissionTrackingController extends Controller
             if (!$submission) {
                 // Delete orphan record
                 if ($file->file_path) {
-                    $localPath = storage_path('app/public/' . $file->file_path);
-                    if (file_exists($localPath)) {
-                        @unlink($localPath);
-                    }
+                    @unlink(storage_path('app/public/' . $file->file_path));
+                    @unlink(public_path('storage/' . $file->file_path));
                 }
                 $file->delete();
                 return $this->successResponse(null, 'ফাইল সফলভাবে মুছে ফেলা হয়েছে।');
@@ -524,12 +622,10 @@ class SubmissionTrackingController extends Controller
                 return $this->errorResponse('এই ব্যাচটি লক করা আছে। ফাইল মোছা যাবে না।', 422);
             }
 
-            // Physically remove local file
+            // Physically remove local file from both locations
             if ($file->file_path) {
-                $localPath = storage_path('app/public/' . $file->file_path);
-                if (file_exists($localPath)) {
-                    @unlink($localPath);
-                }
+                @unlink(storage_path('app/public/' . $file->file_path));
+                @unlink(public_path('storage/' . $file->file_path));
             }
 
             $file->delete();
@@ -569,45 +665,75 @@ class SubmissionTrackingController extends Controller
             $batch = $batchId instanceof SubmissionBatch ? $batchId : SubmissionBatch::findOrFail($batchId);
             $submissions = $batch->submissions()->with(['teacher.department:id,name_bn,name_en', 'files'])->get();
             if ($submissions->isEmpty()) {
-                return response()->json(['success' => false, 'message' => 'কোনো ফাইল জমা হয়নি।'], 404);
+                return response()->json(['success' => false, 'message' => 'কোনো শিক্ষক এখনও ফাইল জমা দেননি।'], 404);
             }
 
             $zipFileName = 'BSISC_' . preg_replace('/[^a-zA-Z0-9_\-]/', '_', $batch->title) . '_Files.zip';
             $tempPath = storage_path('app/temp_' . time() . '_' . rand(1000, 9999) . '.zip');
 
-            $zip = new \ZipArchive();
-            if ($zip->open($tempPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-                return response()->json(['success' => false, 'message' => 'ZIP ফাইল তৈরি করা সম্ভব হয়নি।'], 500);
-            }
-
             $fileCount = 0;
-            foreach ($submissions as $sub) {
-                $teacher = $sub->teacher;
-                $deptName = $teacher?->department?->name_en ?: 'General';
-                $safeTeacherName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $teacher->name ?? 'Teacher');
-                $folderName = "{$deptName}/{$safeTeacherName}";
 
-                foreach ($sub->files as $f) {
-                    $filePath = storage_path('app/public/' . $f->file_path);
-                    if (file_exists($filePath)) {
-                        $zip->addFile($filePath, "{$folderName}/" . $f->file_name);
-                        $fileCount++;
+            // Strategy 1: Use ZipArchive if available
+            if (class_exists('\ZipArchive')) {
+                $zip = new \ZipArchive();
+                if ($zip->open($tempPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) === true) {
+                    foreach ($submissions as $sub) {
+                        $teacher = $sub->teacher;
+                        $deptName = $teacher?->department?->name_en ?: 'General';
+                        $safeTeacherName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $teacher->name ?? 'Teacher');
+                        $folderName = "{$deptName}/{$safeTeacherName}";
+
+                        foreach ($sub->files as $f) {
+                            $resolved = $this->resolvePhysicalFilePath($f->file_path);
+                            if ($resolved) {
+                                $zip->addFile($resolved, "{$folderName}/" . $f->file_name);
+                                $fileCount++;
+                            }
+                        }
                     }
+                    $zip->close();
                 }
             }
 
-            $zip->close();
+            // Strategy 2: If ZipArchive not available or failed to add, use pure PHP ZipBuilder
+            if ($fileCount === 0 || !file_exists($tempPath) || filesize($tempPath) === 0) {
+                $pureZip = new ZipBuilder();
+                $fileCount = 0;
+                foreach ($submissions as $sub) {
+                    $teacher = $sub->teacher;
+                    $deptName = $teacher?->department?->name_en ?: 'General';
+                    $safeTeacherName = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $teacher->name ?? 'Teacher');
+                    $folderName = "{$deptName}/{$safeTeacherName}";
 
-            if ($fileCount === 0) {
+                    foreach ($sub->files as $f) {
+                        $resolved = $this->resolvePhysicalFilePath($f->file_path);
+                        if ($resolved) {
+                            $pureZip->addFile($resolved, "{$folderName}/" . $f->file_name);
+                            $fileCount++;
+                        }
+                    }
+                }
+
+                if ($fileCount > 0) {
+                    $pureZip->saveTo($tempPath);
+                }
+            }
+
+            if ($fileCount === 0 || !file_exists($tempPath)) {
                 if (file_exists($tempPath)) {
                     @unlink($tempPath);
                 }
-                return response()->json(['success' => false, 'message' => 'সার্ভারে কোনো ফাইল খুঁজে পাওয়া যায়নি।'], 404);
+                return response()->json(['success' => false, 'message' => 'সার্ভারে জমা হওয়া কোনো ফাইল খুঁজে পাওয়া যায়নি।'], 404);
             }
 
-            return response()->download($tempPath, $zipFileName)->deleteFileAfterSend(true);
+            return response()->download($tempPath, $zipFileName, [
+                'Content-Type' => 'application/zip',
+                'Content-Disposition' => 'attachment; filename="' . $zipFileName . '"',
+            ])->deleteFileAfterSend(true);
         } catch (\Throwable $e) {
-            Log::error('Download Zip Error: ' . $e->getMessage());
+            Log::error('Download Zip Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
             return response()->json(['success' => false, 'message' => 'ZIP ফাইল ডাউনলোড ব্যর্থ হয়েছে: ' . $e->getMessage()], 500);
         }
     }
@@ -652,6 +778,7 @@ class SubmissionTrackingController extends Controller
                 'files' => $sub ? $sub->files->map(fn($f) => [
                     'name' => $f->file_name,
                     'url' => $f->file_url,
+                    'download_url' => $f->download_url,
                     'gdrive_view_link' => $f->gdrive_view_link,
                     'gdrive_download_link' => $f->gdrive_download_link,
                 ])->toArray() : [],

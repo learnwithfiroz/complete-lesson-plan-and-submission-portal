@@ -83,7 +83,19 @@ export const submissionTrackingApi = {
     const response = await apiClient.get(`/api/v1/submission-tracking/${batchId}/download-all-zip`, {
       responseType: 'blob',
     });
-    const url = window.URL.createObjectURL(new Blob([response.data]));
+
+    if (response.data && (response.data.type === 'application/json' || (response.data as Blob).type?.includes('json'))) {
+      const text = await (response.data as Blob).text();
+      let errorMsg = 'ZIP ফাইল তৈরি করা সম্ভব হয়নি।';
+      try {
+        const json = JSON.parse(text);
+        errorMsg = json.message || errorMsg;
+      } catch (e) {}
+      throw new Error(errorMsg);
+    }
+
+    const blob = new Blob([response.data], { type: 'application/zip' });
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     const safeName = (batchTitle || 'Batch').replace(/[^a-zA-Z0-9_\-]/g, '_');
@@ -91,7 +103,7 @@ export const submissionTrackingApi = {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    window.URL.revokeObjectURL(url);
+    setTimeout(() => window.URL.revokeObjectURL(url), 2000);
   },
 
   syncBatchToDrive: async (batchId: number): Promise<ApiResponse<any>> => {

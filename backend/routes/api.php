@@ -41,6 +41,11 @@ Route::prefix('v1')->group(function () {
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:20,1');
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
+    // Direct file access for submission tracking (Works with target="_blank" in browser)
+    Route::get('/submission-tracking/files/{file}/view', [SubmissionTrackingController::class, 'viewFile']);
+    Route::get('/submission-tracking/files/{file}/download', [SubmissionTrackingController::class, 'downloadFile']);
+    Route::get('/submission-tracking/{batch}/download-all-zip', [SubmissionTrackingController::class, 'downloadAllZip']);
+
 
     // Authenticated Routes
     Route::middleware(['auth:sanctum'])->group(function () {
@@ -181,6 +186,8 @@ Route::prefix('v1')->group(function () {
         Route::delete('/submission-tracking/{batch}', [SubmissionTrackingController::class, 'destroy']);
         Route::post('/submission-tracking/{batch}/submit', [SubmissionTrackingController::class, 'submitFiles']);
         Route::delete('/submission-tracking/files/{file}', [SubmissionTrackingController::class, 'deleteFile']);
+        Route::get('/submission-tracking/files/{file}/view', [SubmissionTrackingController::class, 'viewFile']);
+        Route::get('/submission-tracking/files/{file}/download', [SubmissionTrackingController::class, 'downloadFile']);
         Route::patch('/submission-tracking/submissions/{submission}/status', [SubmissionTrackingController::class, 'updateSubmissionStatus']);
 
         // Dynamic Form Studio & Schema Builder CRUD
