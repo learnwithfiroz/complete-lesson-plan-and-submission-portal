@@ -5,6 +5,7 @@ import { useTranslation } from '../../locales/i18n';
 import { ArrowLeft, ArrowRight, Save, Send } from 'lucide-react';
 import { academicApi } from '../../api/academic';
 import { lessonPlansApi } from '../../api/lessonPlans';
+import { toast } from 'react-toastify';
 import type { AcademicYear, SchoolClass, Subject } from '../../types/academic';
 import type { LessonPlanFormData } from '../../types/lessonPlan';
 import { Step1BasicInfo } from '../../components/lesson-plan/Step1BasicInfo';
@@ -164,7 +165,7 @@ export const CreateLessonPlan: React.FC = () => {
   const validateStep = (step: number): boolean => {
     if (step === 1) {
       if (!formData.title || !formData.topic || !formData.academic_year_id || !formData.term_id || !formData.class_id || !formData.section_id || !formData.subject_id || !formData.lesson_date) {
-        alert('Please fill in all required fields on Step 1 (Title, Topic, Year, Term, Class, Section, Subject, Date)');
+        toast.warning('Please fill in all required fields on Step 1 (Title, Topic, Year, Term, Class, Section, Subject, Date)');
         return false;
       }
     }
@@ -211,9 +212,12 @@ export const CreateLessonPlan: React.FC = () => {
         await lessonPlansApi.submit(savedPlanId, 'Plan submitted for review.');
       }
 
+      toast.success(submitAfterSave ? 'Lesson plan submitted successfully!' : 'Lesson plan saved as draft!');
       navigate(`/lesson-plans/${savedPlanId}`);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save lesson plan');
+      const msg = err.response?.data?.message || 'Failed to save lesson plan';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
