@@ -3,10 +3,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, Button, Card, Alert, Row, Col } from 'react-bootstrap';
-import { Lock, Mail, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, Eye, EyeOff, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from '../../locales/i18n';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
+import { PwaInstallModal } from '../../components/common/PwaInstallModal';
 
 const loginSchema = z.object({
   email: z.string().min(1, 'অনুগ্রহ করে ইমেইল বা মোবাইল নম্বর দিন / Please enter Email or Mobile Number'),
@@ -19,6 +21,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export const Login: React.FC = () => {
   const { loginMutation } = useAuth();
   const { t, language, setLanguage } = useTranslation();
+  const { openInstallModal, isModalOpen, closeInstallModal, isInstalled } = usePwaInstall();
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -169,6 +172,21 @@ export const Login: React.FC = () => {
                   </Button>
                 </Form>
 
+                {/* Mobile App Install Card on Login */}
+                {!isInstalled && (
+                  <div className="mt-4 pt-3 border-top text-center">
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      className="w-100 py-2 rounded-3 fw-bold d-flex align-items-center justify-content-center gap-2"
+                      onClick={openInstallModal}
+                    >
+                      <Smartphone size={16} className="text-primary" />
+                      <span>{language === 'bn' ? '📲 মোবাইলে অ্যাপ ইনস্টল করুন (Install App)' : '📲 Install Mobile App on Android'}</span>
+                    </Button>
+                  </div>
+                )}
+
               </Card.Body>
             </Card>
 
@@ -182,6 +200,8 @@ export const Login: React.FC = () => {
           </Col>
         </Row>
       </div>
+
+      <PwaInstallModal show={isModalOpen} onHide={closeInstallModal} />
     </div>
   );
 };

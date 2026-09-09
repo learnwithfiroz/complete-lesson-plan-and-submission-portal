@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar, Container, Dropdown, Button, Badge } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, LogOut, Bell, Menu } from 'lucide-react';
+import { User, LogOut, Bell, Menu, Smartphone } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useTranslation } from '../../locales/i18n';
 import { notificationsApi } from '../../api/notifications';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
 
 interface HeaderProps {
   onToggleSidebar?: () => void;
@@ -13,6 +14,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { user, logout } = useAuthStore();
   const { language, setLanguage, t } = useTranslation();
+  const { openInstallModal, isInstalled } = usePwaInstall();
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -89,6 +91,22 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
               </Badge>
             )}
           </Link>
+
+          {/* Mobile App Install Button */}
+          {!isInstalled && (
+            <Button
+              variant="outline-primary"
+              size="sm"
+              className="py-1 px-2 d-flex align-items-center gap-1 rounded-pill fw-bold text-nowrap shadow-xs"
+              style={{ fontSize: '0.75rem' }}
+              onClick={openInstallModal}
+              title="মোবাইল অ্যাপ ইনস্টল করুন (Install Android App)"
+            >
+              <Smartphone size={14} className="text-primary" />
+              <span className="d-none d-md-inline">{language === 'bn' ? 'অ্যাপ ইনস্টল' : 'Install App'}</span>
+              <span className="d-inline d-md-none">App</span>
+            </Button>
+          )}
 
           {/* Bilingual Switcher */}
           <div className="btn-group btn-group-sm" role="group" aria-label="Language switch">

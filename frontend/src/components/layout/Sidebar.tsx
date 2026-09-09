@@ -22,7 +22,10 @@ import {
   Layers,
   Sparkles,
   X,
+  Smartphone,
+  Download,
 } from 'lucide-react';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -30,8 +33,9 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onCloseMobile }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { hasRole } = useAuthStore();
+  const { openInstallModal, isInstalled } = usePwaInstall();
 
   const isAdminOrCoord = hasRole(['super_admin', 'principal', 'academic_coordinator']);
 
@@ -335,8 +339,34 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onCloseMobile }) => {
         )}
       </ul>
 
+      {/* Mobile App Install Card */}
+      {!isInstalled && (
+        <div className="p-2.5 mb-3 bg-white bg-opacity-10 rounded-3 text-center border border-white-50 border-opacity-25 shadow-sm">
+          <div className="d-flex align-items-center justify-content-center gap-1.5 small fw-bold text-warning mb-1">
+            <Smartphone size={15} />
+            <span>{language === 'bn' ? 'অ্যান্ড্রয়েড মোবাইল অ্যাপ' : 'Android Mobile App'}</span>
+          </div>
+          <p className="text-white-50 mb-2" style={{ fontSize: '11px', lineHeight: '1.3' }}>
+            {language === 'bn'
+              ? 'মোবাইলে সহজে ১ ট্যাপে ব্যবহার করতে অ্যাপটি ইনস্টল করুন'
+              : 'Install app on your phone for 1-tap fast access'}
+          </p>
+          <button
+            type="button"
+            className="btn btn-warning btn-sm w-100 fw-bold py-1 px-2 text-dark d-flex align-items-center justify-content-center gap-1.5 shadow-sm"
+            style={{ fontSize: '11.5px' }}
+            onClick={() => {
+              onCloseMobile?.();
+              openInstallModal();
+            }}
+          >
+            <Download size={13} /> {language === 'bn' ? 'অ্যাপ ইনস্টল করুন' : 'Install App'}
+          </button>
+        </div>
+      )}
+
       {/* Footer info */}
-      <div className="border-top border-secondary pt-3 mt-auto small text-white-50 text-center">
+      <div className="border-top border-secondary pt-2 mt-auto small text-white-50 text-center">
         BSISC Lesson System v1.0
       </div>
     </aside>
