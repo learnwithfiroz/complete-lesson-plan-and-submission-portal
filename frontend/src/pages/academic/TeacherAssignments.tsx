@@ -153,7 +153,7 @@ export const TeacherAssignments: React.FC = () => {
                         <td className="ps-4">
                           <div className="d-flex align-items-center gap-2.5">
                             <div className="avatar-circle">
-                              {asg.teacher.name.charAt(0).toUpperCase()}
+                              {(asg.teacher?.name || 'T').charAt(0).toUpperCase()}
                             </div>
                             <div>
                               <div className="fw-bold text-dark">{asg.teacher.name}</div>

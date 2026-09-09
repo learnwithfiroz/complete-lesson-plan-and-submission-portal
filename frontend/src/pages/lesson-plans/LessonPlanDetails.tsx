@@ -211,7 +211,7 @@ export const LessonPlanDetails: React.FC = () => {
       {plan.reviews && plan.reviews.length > 0 && (
         <Alert variant={plan.status === 'returned' ? 'warning' : plan.status === 'rejected' ? 'danger' : 'info'} className="mb-4">
           <h6 className="fw-bold mb-1">
-            Latest Reviewer Feedback ({plan.reviews[plan.reviews.length - 1].action.toUpperCase()} by {plan.reviews[plan.reviews.length - 1].reviewer?.name}):
+            Latest Reviewer Feedback ({(plan.reviews[plan.reviews.length - 1].action || '').toUpperCase()} by {plan.reviews[plan.reviews.length - 1].reviewer?.name || 'Reviewer'}):
           </h6>
           <div>{plan.reviews[plan.reviews.length - 1].comment}</div>
         </Alert>

@@ -79,7 +79,7 @@ export const NoticeDetailModal: React.FC<NoticeDetailModalProps> = ({ show, noti
           {getPriorityBadge(notice.priority)}
           {getCategoryBadge(notice.category)}
           <Badge bg="light" text="dark" className="border d-inline-flex align-items-center gap-1">
-            <Users size={12} /> {t('notices.audience', 'Audience')}: {notice.target_audience.toUpperCase()}
+            <Users size={12} /> {t('notices.audience', 'Audience')}: {(notice.target_audience || 'all').toUpperCase()}
           </Badge>
         </div>
       </Modal.Header>

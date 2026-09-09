@@ -339,7 +339,7 @@ export const UserList: React.FC = () => {
                           <td>
                             <div className="d-flex align-items-center gap-2.5">
                               <div className={`avatar-circle ${u.gender === 'Female' ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary'} fw-bold`}>
-                                {u.name.charAt(0).toUpperCase()}
+                                {(u.name || 'U').charAt(0).toUpperCase()}
                               </div>
                               <div>
                                 <div className="d-flex align-items-center gap-1.5 flex-wrap">
@@ -489,7 +489,7 @@ export const UserList: React.FC = () => {
                         <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
                           <div className="d-flex align-items-center gap-2">
                             <div className={`avatar-circle ${u.gender === 'Female' ? 'bg-danger-subtle text-danger' : 'bg-primary-subtle text-primary'} fw-bold`}>
-                              {u.name.charAt(0).toUpperCase()}
+                              {(u.name || 'U').charAt(0).toUpperCase()}
                             </div>
                             <div>
                               <div className="d-flex align-items-center gap-1 flex-wrap">

@@ -138,7 +138,7 @@ export const NoticeReadersModal: React.FC<NoticeReadersModalProps> = ({ show, no
             <div className="bg-primary-subtle border border-primary-subtle rounded-3 p-3 mb-4">
               <div className="d-flex align-items-center gap-2 mb-1">
                 <Badge bg="primary" className="text-uppercase fs-9">
-                  {data.target_audience.toUpperCase()}
+                  {(data.target_audience || 'all').toUpperCase()}
                 </Badge>
                 {data.priority === 'urgent' && (
                   <Badge bg="danger" className="fs-9">⚡ URGENT</Badge>
@@ -256,7 +256,7 @@ export const NoticeReadersModal: React.FC<NoticeReadersModalProps> = ({ show, no
                                 {r.avatar ? (
                                   <img src={r.avatar} alt={r.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 ) : (
-                                  r.name.charAt(0).toUpperCase()
+                                  (r.name || 'U').charAt(0).toUpperCase()
                                 )}
                               </div>
                               <div>
@@ -328,7 +328,7 @@ export const NoticeReadersModal: React.FC<NoticeReadersModalProps> = ({ show, no
                                 {u.avatar ? (
                                   <img src={u.avatar} alt={u.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 ) : (
-                                  u.name.charAt(0).toUpperCase()
+                                  (u.name || 'U').charAt(0).toUpperCase()
                                 )}
                               </div>
                               <div>

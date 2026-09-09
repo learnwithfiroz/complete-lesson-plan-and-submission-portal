@@ -432,7 +432,7 @@ export const NoticeBoard: React.FC = () => {
                       </td>
                       <td><Badge bg="light" text="dark" className="border text-uppercase">{n.category}</Badge></td>
                       <td>{getPriorityBadge(n.priority)}</td>
-                      <td><Badge bg="secondary">{n.target_audience.toUpperCase()}</Badge></td>
+                      <td><Badge bg="secondary">{(n.target_audience || 'all').toUpperCase()}</Badge></td>
                       <td><small>{n.creator?.name || 'Admin'}</small></td>
                       <td><small>{new Date(n.publish_date || n.created_at).toLocaleDateString('en-GB')}</small></td>
                       <td className="text-end" onClick={(e) => e.stopPropagation()}>

@@ -79,7 +79,7 @@ export const Notifications: React.FC = () => {
                     <td>
                       <div className="d-flex align-items-center gap-2">
                         <strong className="text-dark">
-                          Plan {n.data.lesson_plan_code} {n.data.action.toUpperCase()}
+                          Plan {n.data?.lesson_plan_code || ''} {(n.data?.action || '').toUpperCase()}
                         </strong>
                         {!n.read_at && <Badge bg="primary">New</Badge>}
                       </div>

@@ -447,7 +447,7 @@ export const Dashboard: React.FC = () => {
                           <div className="d-flex align-items-center gap-1">
                             {n.is_pinned && <Pin size={12} className="text-warning" fill="#f59e0b" />}
                             <span className={`badge ${n.priority === 'urgent' ? 'bg-danger' : n.priority === 'high' ? 'bg-warning text-dark' : 'bg-primary'} py-0 px-1`} style={{ fontSize: '10px' }}>
-                              {n.priority.toUpperCase()}
+                              {(n.priority || 'normal').toUpperCase()}
                             </span>
                             <span className="badge bg-secondary py-0 px-1 text-uppercase" style={{ fontSize: '9px' }}>
                               {n.category}
