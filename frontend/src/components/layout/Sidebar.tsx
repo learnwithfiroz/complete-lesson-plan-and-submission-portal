@@ -20,6 +20,7 @@ import {
   Sliders,
   Briefcase,
   Layers,
+  Sparkles,
   X,
 } from 'lucide-react';
 
@@ -228,6 +229,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onCloseMobile }) => {
               >
                 <Layers size={16} className="me-2 text-light" />
                 Tender Bid Form
+              </NavLink>
+            </li>
+
+            <li className="nav-item">
+              <NavLink
+                to="/form-builder/custom"
+                className={({ isActive }) => `nav-link text-white d-flex align-items-center ${isActive ? 'bg-secondary fw-bold text-success' : 'opacity-75'}`}
+              >
+                <Sparkles size={16} className="me-2 text-success" />
+                Custom Form Builder
               </NavLink>
             </li>
           </>

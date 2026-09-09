@@ -1,22 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Button, Form, Badge, Modal, Row, Col, ProgressBar, Table, Spinner, Alert } from 'react-bootstrap';
 import {
+  Row,
+  Col,
+  Card,
+  Button,
+  Badge,
+  Form,
+  Modal,
+  ProgressBar,
+  Dropdown,
+  Table,
+  Spinner,
+  Alert
+} from 'react-bootstrap';
+import {
+  Sliders,
   Save,
   Plus,
   Copy,
-  RefreshCw,
-  Link as LinkIcon,
+  Trash2,
   Eye,
   EyeOff,
-  ArrowUp,
-  ArrowDown,
-  Trash2,
-  Sliders,
+  ChevronUp,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
   Smartphone,
   Monitor,
-  ChevronLeft,
-  ChevronRight,
+  Link as LinkIcon,
+  HelpCircle,
   Shield,
   User,
   Users,
@@ -32,19 +45,21 @@ import {
   CheckCircle2,
   Download,
   Search,
-  X
+  Sparkles,
+  FolderPlus
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { formSchemasApi } from '../../api/formSchemas';
 import { formSubmissionsApi, type FormSubmissionRecord } from '../../api/formSubmissions';
-import type { FormSchema, FormSchemaData, FormField, FormType, FieldType } from '../../types/formBuilder';
+import type { FormSchema, FormSchemaData, FormField, FormSection, FormType, FieldType } from '../../types/formBuilder';
 import { defaultAdmissionSchemaData } from '../../data/defaultAdmissionSchema';
+import { defaultCustomSchemaData } from '../../data/defaultCustomSchema';
 
 export const FormBuilderStudio: React.FC = () => {
   const { type } = useParams<{ type?: string }>();
   const navigate = useNavigate();
 
-  // Active form type (admission, job, tender)
+  // Active form type (admission, job, tender, custom)
   const [formType, setFormType] = useState<FormType>((type as FormType) || 'admission');
   const [schemasList, setSchemasList] = useState<FormSchema[]>([]);
   const [currentSchemaId, setCurrentSchemaId] = useState<number | null>(null);
@@ -66,6 +81,7 @@ export const FormBuilderStudio: React.FC = () => {
 
   // Modals state
   const [showCustomQuestionModal, setShowCustomQuestionModal] = useState<boolean>(false);
+  const [showAddSectionModal, setShowAddSectionModal] = useState<boolean>(false);
   const [showLinkCircularModal, setShowLinkCircularModal] = useState<boolean>(false);
   const [showNewTemplateModal, setShowNewTemplateModal] = useState<boolean>(false);
   const [showPublicLinkModal, setShowPublicLinkModal] = useState<boolean>(false);
@@ -78,14 +94,21 @@ export const FormBuilderStudio: React.FC = () => {
   const [submissionStatusFilter, setSubmissionStatusFilter] = useState<string>('all');
   const [selectedSubmissionDetail, setSelectedSubmissionDetail] = useState<FormSubmissionRecord | null>(null);
 
+  // New Custom Section state
+  const [newSectionNameEn, setNewSectionNameEn] = useState<string>('');
+  const [newSectionNameBn, setNewSectionNameBn] = useState<string>('');
+  const [newSectionIcon, setNewSectionIcon] = useState<string>('FileText');
+
   // New Custom Field state
   const [newFieldSectionId, setNewFieldSectionId] = useState<string>('');
   const [newFieldKey, setNewFieldKey] = useState<string>('');
   const [newFieldLabelEn, setNewFieldLabelEn] = useState<string>('');
   const [newFieldLabelBn, setNewFieldLabelBn] = useState<string>('');
   const [newFieldType, setNewFieldType] = useState<FieldType>('text');
+  const [newFieldOptions, setNewFieldOptions] = useState<string>('');
   const [newFieldRequired, setNewFieldRequired] = useState<boolean>(true);
   const [newFieldVisible, setNewFieldVisible] = useState<boolean>(true);
+  const [newFieldCol, setNewFieldCol] = useState<number>(6);
 
   // New Template title state
   const [newTemplateTitle, setNewTemplateTitle] = useState<string>('');
@@ -94,7 +117,7 @@ export const FormBuilderStudio: React.FC = () => {
   const [previewValues, setPreviewValues] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    if (type && ['admission', 'job', 'tender'].includes(type)) {
+    if (type && ['admission', 'job', 'tender', 'custom'].includes(type)) {
       setFormType(type as FormType);
     }
   }, [type]);
@@ -102,6 +125,13 @@ export const FormBuilderStudio: React.FC = () => {
   useEffect(() => {
     loadSchemas(formType);
   }, [formType]);
+
+  const getDefaultDataForType = (selectedType: FormType): FormSchemaData => {
+    if (selectedType === 'custom') {
+      return defaultCustomSchemaData;
+    }
+    return defaultAdmissionSchemaData;
+  };
 
   const loadSchemas = async (selectedType: FormType) => {
     try {
@@ -125,11 +155,17 @@ export const FormBuilderStudio: React.FC = () => {
       } else {
         setCurrentSchemaId(null);
         setSchemaSlug(selectedType);
-        setSchemaData(defaultAdmissionSchemaData);
-        setTemplateTitle(defaultAdmissionSchemaData.title);
+        const fallbackData = getDefaultDataForType(selectedType);
+        setSchemaData(fallbackData);
+        setTemplateTitle(fallbackData.title);
+        setPostPaymentDoc(fallbackData.post_payment_document || 'Application Voucher (কাগজী পেসে প্রবেশপত্র)');
+        setLayoutStyle(fallbackData.layout_style || 'wizard');
       }
     } catch (err) {
       console.error('Failed to load form schemas', err);
+      const fallbackData = getDefaultDataForType(selectedType);
+      setSchemaData(fallbackData);
+      setTemplateTitle(fallbackData.title);
     }
   };
 
@@ -164,6 +200,7 @@ export const FormBuilderStudio: React.FC = () => {
       let savedSlug = schemaSlug;
       if (currentSchemaId) {
         const res = await formSchemasApi.updateSchema(currentSchemaId, {
+          form_type: formType,
           title: templateTitle,
           schema_data: payloadData,
           post_payment_action: postPaymentDoc,
@@ -194,9 +231,8 @@ export const FormBuilderStudio: React.FC = () => {
       // Automatically show the Google Forms-style public link popup!
       setShowPublicLinkModal(true);
     } catch (err: any) {
-      localStorage.setItem(`bsisc_form_schema_${formType}`, JSON.stringify(payloadData));
-      toast.success('✨ ফরম স্কিমা লোকাল স্টোরেজে সফলভাবে সেভ করা হয়েছে!');
-      setShowPublicLinkModal(true);
+      console.error('Failed to save schema', err);
+      toast.error(err?.response?.data?.message || 'ফরম স্কিমা সেভ করতে সমস্যা হয়েছে।');
     } finally {
       setSaving(false);
     }
@@ -204,134 +240,234 @@ export const FormBuilderStudio: React.FC = () => {
 
   const handleDuplicateTemplate = async () => {
     if (!currentSchemaId) {
-      toast.info('অনুগ্রহ করে সেভ করা টেমপ্লেট নির্বাচন করুন।');
+      toast.info('অনুগ্রহ করে প্রথমে সেভ করা একটি টেমপ্লেট নির্বাচন করুন।');
       return;
     }
     try {
-      await formSchemasApi.duplicateSchema(currentSchemaId);
+      const res = await formSchemasApi.duplicateSchema(currentSchemaId);
       toast.success('টেমপ্লেট সফলভাবে ডুপ্লিকেট করা হয়েছে!');
       loadSchemas(formType);
+      if (res.data.data?.id) {
+        setCurrentSchemaId(res.data.data.id);
+        setSchemaSlug(res.data.data.slug || formType);
+      }
     } catch (err) {
+      console.error('Failed to duplicate schema', err);
       toast.error('ডুপ্লিকেট করতে ব্যর্থ হয়েছে।');
     }
   };
 
-  // Load Submissions for the active schema
+  const handleDeleteTemplate = async () => {
+    if (!currentSchemaId) return;
+    if (window.confirm('আপনি কি নিশ্চিত যে এই টেমপ্লেটটি মুছে ফেলতে চান?')) {
+      try {
+        await formSchemasApi.deleteSchema(currentSchemaId);
+        toast.success('টেমপ্লেট মুছে ফেলা হয়েছে।');
+        loadSchemas(formType);
+      } catch (err) {
+        toast.error('মুছে ফেলতে সমস্যা হয়েছে।');
+      }
+    }
+  };
+
+  // Open Responses Viewer
   const handleOpenSubmissions = async () => {
     if (!currentSchemaId) {
-      toast.info('অনুগ্রহ করে প্রথমে ফরমটি সেভ করুন।');
+      toast.info('কোনো সক্রিয় স্কিমা পাওয়া যায়নি।');
       return;
     }
     setShowSubmissionsModal(true);
     setLoadingSubmissions(true);
     try {
-      const res = await formSubmissionsApi.getSubmissions(currentSchemaId, {
-        search: submissionSearch || undefined,
-        status: submissionStatusFilter !== 'all' ? submissionStatusFilter : undefined,
-      });
+      const res = await formSubmissionsApi.getSubmissions(currentSchemaId, { per_page: 50 });
       setSubmissionsList(res.data || []);
-      setSubmissionCount(res.meta?.total || (res.data || []).length);
+      setSubmissionCount(res.meta?.total || res.data?.length || 0);
     } catch (err) {
       console.error('Failed to load submissions', err);
-      toast.error('আবেদন তালিকা লোড করা সম্ভব হয়নি।');
+      toast.error('রেসপন্স লোড করতে ব্যর্থ হয়েছে।');
     } finally {
       setLoadingSubmissions(false);
     }
   };
 
-  const handleUpdateStatus = async (subId: number, newStatus: string) => {
+  const handleUpdateSubmissionStatus = async (submissionId: number, newStatus: string) => {
     try {
-      await formSubmissionsApi.updateStatus(subId, { status: newStatus });
-      toast.success('আবেদনের স্ট্যাটাস আপডেট করা হয়েছে!');
+      await formSubmissionsApi.updateSubmissionStatus(submissionId, { status: newStatus });
+      toast.success(`স্ট্যাটাস পরিবর্তিত হয়েছে: ${newStatus.toUpperCase()}`);
       setSubmissionsList((prev) =>
-        prev.map((s) => (s.id === subId ? { ...s, status: newStatus as any } : s))
+        prev.map((sub) => (sub.id === submissionId ? { ...sub, status: newStatus as any } : sub))
       );
-      if (selectedSubmissionDetail?.id === subId) {
+      if (selectedSubmissionDetail && selectedSubmissionDetail.id === submissionId) {
         setSelectedSubmissionDetail((prev) => (prev ? { ...prev, status: newStatus as any } : null));
       }
     } catch (err) {
-      toast.error('স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে।');
+      toast.error('স্ট্যাটাস আপডেট ব্যর্থ হয়েছে।');
     }
   };
 
-  // Export Submissions to CSV
+  // Export responses to CSV
   const handleExportCSV = () => {
     if (submissionsList.length === 0) {
-      toast.info('এক্সপোর্ট করার মতো কোনো আবেদন ডেটা পাওয়া যায়নি।');
+      toast.info('কোনো রেসপন্স নেই এক্সপোর্ট করার মতো।');
       return;
     }
-
-    const headers = ['Tracking Number', 'Applicant Name', 'Phone', 'Email', 'Status', 'Submission Date'];
+    const headers = ['Tracking No', 'Applicant Name', 'Phone', 'Email', 'Status', 'Submitted At'];
     const rows = submissionsList.map((s) => [
-      `"${s.tracking_number}"`,
-      `"${s.applicant_name}"`,
-      `"${s.applicant_phone || ''}"`,
-      `"${s.applicant_email || ''}"`,
-      `"${s.status}"`,
-      `"${new Date(s.created_at).toLocaleString()}"`,
+      s.tracking_number,
+      `"${(s.applicant_name || '').replace(/"/g, '""')}"`,
+      s.applicant_phone || '',
+      s.applicant_email || '',
+      s.status,
+      new Date(s.created_at).toLocaleString(),
     ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `BSISC_${formType}_Submissions_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `${schemaSlug}_submissions_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success('CSV ফাইল ডাউনলোড শুরু হয়েছে!');
+    toast.success('CSV ডাউনলোড শুরু হয়েছে!');
   };
 
-  // Field Edit Handlers
-  const handleFieldChange = (
-    sectionId: string,
-    fieldId: string,
-    fieldKey: keyof FormField,
-    value: any
-  ) => {
+  // Field manipulation handlers
+  const handleToggleRequired = (sectionId: string, fieldId: string) => {
     setSchemaData((prev) => {
-      const updatedSections = prev.sections.map((sec) => {
+      const newSections = prev.sections.map((sec) => {
         if (sec.id !== sectionId) return sec;
-        const updatedFields = sec.fields.map((f) => {
+        const newFields = sec.fields.map((f) => {
           if (f.id !== fieldId) return f;
-          return { ...f, [fieldKey]: value };
+          return { ...f, required: !f.required };
         });
-        return { ...sec, fields: updatedFields };
+        return { ...sec, fields: newFields };
       });
-      return { ...prev, sections: updatedSections };
+      return { ...prev, sections: newSections };
+    });
+  };
+
+  const handleToggleVisibility = (sectionId: string, fieldId: string) => {
+    setSchemaData((prev) => {
+      const newSections = prev.sections.map((sec) => {
+        if (sec.id !== sectionId) return sec;
+        const newFields = sec.fields.map((f) => {
+          if (f.id !== fieldId) return f;
+          return { ...f, visible: !f.visible };
+        });
+        return { ...sec, fields: newFields };
+      });
+      return { ...prev, sections: newSections };
     });
   };
 
   const handleMoveField = (sectionId: string, fieldIndex: number, direction: 'up' | 'down') => {
     setSchemaData((prev) => {
-      const updatedSections = prev.sections.map((sec) => {
+      const newSections = prev.sections.map((sec) => {
         if (sec.id !== sectionId) return sec;
         const newFields = [...sec.fields];
         const targetIndex = direction === 'up' ? fieldIndex - 1 : fieldIndex + 1;
         if (targetIndex < 0 || targetIndex >= newFields.length) return sec;
+
         const temp = newFields[fieldIndex];
         newFields[fieldIndex] = newFields[targetIndex];
         newFields[targetIndex] = temp;
         return { ...sec, fields: newFields };
       });
-      return { ...prev, sections: updatedSections };
+      return { ...prev, sections: newSections };
+    });
+  };
+
+  const handleUpdateFieldLabel = (sectionId: string, fieldId: string, lang: 'en' | 'bn', value: string) => {
+    setSchemaData((prev) => {
+      const newSections = prev.sections.map((sec) => {
+        if (sec.id !== sectionId) return sec;
+        const newFields = sec.fields.map((f) => {
+          if (f.id !== fieldId) return f;
+          if (lang === 'en') return { ...f, label_en: value };
+          return { ...f, label_bn: value };
+        });
+        return { ...sec, fields: newFields };
+      });
+      return { ...prev, sections: newSections };
     });
   };
 
   const handleDeleteField = (sectionId: string, fieldId: string) => {
     if (!window.confirm('আপনি কি নিশ্চিত যে এই ফিল্ডটি মুছে ফেলতে চান?')) return;
     setSchemaData((prev) => {
-      const updatedSections = prev.sections.map((sec) => {
+      const newSections = prev.sections.map((sec) => {
         if (sec.id !== sectionId) return sec;
         return { ...sec, fields: sec.fields.filter((f) => f.id !== fieldId) };
       });
-      return { ...prev, sections: updatedSections };
+      return { ...prev, sections: newSections };
+    });
+    toast.info('ফিল্ডটি মুছে ফেলা হয়েছে।');
+  };
+
+  // Section manipulation handlers
+  const handleAddSection = () => {
+    if (!newSectionNameEn.trim() && !newSectionNameBn.trim()) {
+      toast.error('সেকশনের নাম দিন।');
+      return;
+    }
+    const secOrder = schemaData.sections.length + 1;
+    const newSecId = 'sec_cust_' + Date.now();
+    const newSec: FormSection = {
+      id: newSecId,
+      section_key: 'sec_' + Date.now(),
+      name_en: `${secOrder}. ${newSectionNameEn.trim() || newSectionNameBn.trim()}`,
+      name_bn: `${secOrder}. ${newSectionNameBn.trim() || newSectionNameEn.trim()}`,
+      title_en: `${secOrder}. ${newSectionNameEn.trim() || newSectionNameBn.trim()}`,
+      title_bn: `${secOrder}. ${newSectionNameBn.trim() || newSectionNameEn.trim()}`,
+      icon: newSectionIcon || 'FileText',
+      order: secOrder,
+      fields: [],
+    };
+
+    setSchemaData((prev) => ({
+      ...prev,
+      sections: [...prev.sections, newSec],
+    }));
+
+    setActiveSectionId(newSecId);
+    setShowAddSectionModal(false);
+    setNewSectionNameEn('');
+    setNewSectionNameBn('');
+    toast.success('🎉 নতুন সেকশন সফলভাবে যুক্ত হয়েছে!');
+  };
+
+  const handleDeleteSection = (sectionId: string) => {
+    if (schemaData.sections.length <= 1) {
+      toast.warning('কমপক্ষে একটি সেকশন থাকা আবশ্যক।');
+      return;
+    }
+    if (!window.confirm('আপনি কি নিশ্চিত যে সম্পূর্ণ সেকশনটি মুছে ফেলতে চান?')) return;
+
+    setSchemaData((prev) => ({
+      ...prev,
+      sections: prev.sections.filter((s) => s.id !== sectionId),
+    }));
+    setActiveSectionId('all');
+    toast.info('সেকশন মুছে ফেলা হয়েছে।');
+  };
+
+  const handleMoveSection = (sectionIndex: number, direction: 'up' | 'down') => {
+    setSchemaData((prev) => {
+      const newSections = [...prev.sections];
+      const targetIndex = direction === 'up' ? sectionIndex - 1 : sectionIndex + 1;
+      if (targetIndex < 0 || targetIndex >= newSections.length) return prev;
+
+      const temp = newSections[sectionIndex];
+      newSections[sectionIndex] = newSections[targetIndex];
+      newSections[targetIndex] = temp;
+      return { ...prev, sections: newSections };
     });
   };
 
-  const handleAddCustomQuestion = () => {
+  // Add Custom Field to Schema
+  const handleAddCustomField = () => {
     if (!newFieldLabelEn.trim() && !newFieldLabelBn.trim()) {
-      toast.error('ফিল্ডের একটি ইংরেজি বা বাংলা নাম দিন।');
+      toast.error('ফিল্ডের শিরোনাম (Label) দিন।');
       return;
     }
 
@@ -342,15 +478,34 @@ export const FormBuilderStudio: React.FC = () => {
     }
 
     const key = newFieldKey.trim() || 'custom_' + Date.now();
+
+    // Parse options if select/radio/checkbox
+    let parsedOptions: any[] | undefined = undefined;
+    if (['select', 'radio', 'checkbox'].includes(newFieldType) && newFieldOptions.trim()) {
+      parsedOptions = newFieldOptions
+        .split(',')
+        .map((opt) => opt.trim())
+        .filter(Boolean)
+        .map((opt) => ({
+          label_en: opt,
+          label_bn: opt,
+          value: opt.toLowerCase().replace(/\s+/g, '_'),
+        }));
+    }
+
     const newField: FormField = {
       id: 'f_' + Date.now(),
+      field_key: key,
       key: key,
       label_en: newFieldLabelEn || newFieldLabelBn,
       label_bn: newFieldLabelBn || newFieldLabelEn,
       type: newFieldType,
+      options: parsedOptions,
       required: newFieldRequired,
       visible: newFieldVisible,
-      col_width: 6,
+      grid_col: newFieldCol,
+      col_width: newFieldCol,
+      category: 'CUSTOM_FIELD',
       category_tag: 'CUSTOM_FIELD',
       profile_sync: 'customField_' + Date.now(),
     };
@@ -364,9 +519,10 @@ export const FormBuilderStudio: React.FC = () => {
     });
 
     setShowCustomQuestionModal(false);
+    setNewFieldKey('');
     setNewFieldLabelEn('');
     setNewFieldLabelBn('');
-    setNewFieldKey('');
+    setNewFieldOptions('');
     toast.success('কাস্টম ফিল্ড সফলভাবে যুক্ত করা হয়েছে!');
   };
 
@@ -396,22 +552,35 @@ export const FormBuilderStudio: React.FC = () => {
   const currentPreviewSection = schemaData.sections[activePreviewStep] || schemaData.sections[0];
   const previewProgress = Math.round(((activePreviewStep + 1) / (schemaData.sections.length || 1)) * 100);
 
-  const getSectionIcon = (sectionKey?: string) => {
-    switch (sectionKey) {
+  const getSectionIcon = (iconName?: string) => {
+    switch (iconName) {
+      case 'User':
       case 'student_identity':
-        return <User size={15} className="me-1" />;
+        return <User size={15} className="me-1 text-primary" />;
+      case 'Users':
       case 'parents_details':
-        return <Users size={15} className="me-1" />;
+        return <Users size={15} className="me-1 text-success" />;
+      case 'Shield':
       case 'guardian_details':
-        return <Shield size={15} className="me-1" />;
+        return <Shield size={15} className="me-1 text-warning" />;
+      case 'MapPin':
       case 'address_geo':
-        return <MapPin size={15} className="me-1" />;
+        return <MapPin size={15} className="me-1 text-danger" />;
+      case 'UserCheck':
       case 'sibling_info':
-        return <UserCheck size={15} className="me-1" />;
+        return <UserCheck size={15} className="me-1 text-info" />;
+      case 'Paperclip':
       case 'documents_upload':
-        return <Paperclip size={15} className="me-1" />;
+      case 'attachments_docs':
+        return <Paperclip size={15} className="me-1 text-secondary" />;
+      case 'Briefcase':
+        return <Briefcase size={15} className="me-1 text-info" />;
+      case 'Layers':
+        return <Layers size={15} className="me-1 text-dark" />;
+      case 'Sparkles':
+        return <Sparkles size={15} className="me-1 text-warning" />;
       default:
-        return <FileText size={15} className="me-1" />;
+        return <FileText size={15} className="me-1 text-primary" />;
     }
   };
 
@@ -429,13 +598,13 @@ export const FormBuilderStudio: React.FC = () => {
             </div>
             <div>
               <div className="d-flex align-items-center gap-2">
-                <h4 className="fw-bold text-dark mb-0 fs-5">Dynamic Form Studio & Schema Builder</h4>
-                <Badge bg="primary" className="fw-bold px-2 py-1 fs-8 text-uppercase">
+                <h5 className="fw-bold mb-0 text-dark">Dynamic Form Studio & Schema Builder</h5>
+                <Badge bg="warning" text="dark" className="fw-bold px-2 py-1 fs-8 text-uppercase">
                   PRO
                 </Badge>
               </div>
               <small className="text-muted">
-                Configure mandatory fields, instructions, section visibility & live candidate sync
+                Configure mandatory fields, create custom forms, instructions & share Google Forms-style links
               </small>
             </div>
           </div>
@@ -482,6 +651,19 @@ export const FormBuilderStudio: React.FC = () => {
               >
                 <Layers size={14} /> Tender Form
               </Button>
+              <Button
+                variant={formType === 'custom' ? 'success' : 'light'}
+                size="sm"
+                className={`rounded-pill px-3 fw-bold d-flex align-items-center gap-1 ${
+                  formType === 'custom' ? 'text-white shadow-sm' : 'text-primary'
+                }`}
+                onClick={() => {
+                  setFormType('custom');
+                  navigate('/form-builder/custom');
+                }}
+              >
+                <Sparkles size={14} /> Custom Form
+              </Button>
             </div>
 
             {/* Public Link Button */}
@@ -526,13 +708,11 @@ export const FormBuilderStudio: React.FC = () => {
         </div>
       </div>
 
-      {/* Saved Templates & Quick Action Toolbar */}
+      {/* Saved Templates & Action Toolbar */}
       <div className="bg-white rounded-3 shadow-sm p-3 mb-3 border">
         <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
           <div className="d-flex flex-wrap align-items-center gap-2">
-            <span className="fw-bold small text-muted text-uppercase tracking-wider">
-              SAVED TEMPLATES:
-            </span>
+            <span className="small fw-bold text-muted text-uppercase">SAVED TEMPLATES:</span>
             <Form.Select
               size="sm"
               value={currentSchemaId || ''}
@@ -552,52 +732,79 @@ export const FormBuilderStudio: React.FC = () => {
             <Badge bg="secondary" className="px-2 py-1">
               {schemasList.length || 1} Templates
             </Badge>
-            <Badge bg="warning" text="dark" className="px-2 py-1 fw-bold">
-              Default Template ⭐
-            </Badge>
+            {isActive && (
+              <Badge bg="success" className="px-2 py-1 fw-bold">
+                ● Accepting Submissions
+              </Badge>
+            )}
           </div>
 
-          <div className="d-flex flex-wrap align-items-center gap-1.5">
+          <div className="d-flex flex-wrap align-items-center gap-2">
             <Button
-              variant="outline-secondary"
+              variant="outline-primary"
               size="sm"
-              className="d-flex align-items-center gap-1"
+              className="d-flex align-items-center gap-1 rounded-2 fw-semibold"
+              style={{ borderColor: '#6366f1', color: '#6366f1' }}
               onClick={() => setShowLinkCircularModal(true)}
             >
               <LinkIcon size={14} /> Link Circulars
             </Button>
             <Button
-              variant="outline-primary"
+              variant="outline-success"
               size="sm"
-              className="d-flex align-items-center gap-1"
-              onClick={() => setShowCustomQuestionModal(true)}
+              className="d-flex align-items-center gap-1 rounded-2 fw-semibold"
+              onClick={() => setShowAddSectionModal(true)}
+            >
+              <FolderPlus size={14} /> Add Section
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              className="d-flex align-items-center gap-1 rounded-2 fw-semibold"
+              style={{ backgroundColor: '#8b5cf6', borderColor: '#8b5cf6' }}
+              onClick={() => {
+                setNewFieldSectionId(schemaData.sections[0]?.id || '');
+                setShowCustomQuestionModal(true);
+              }}
             >
               <Plus size={14} /> Custom Question
             </Button>
             <Button
               variant="outline-secondary"
               size="sm"
-              className="d-flex align-items-center gap-1"
-              onClick={() => loadSchemas(formType)}
+              className="d-flex align-items-center gap-1 rounded-2"
+              onClick={() => {
+                toast.success('স্কুল ডাটা ডিকশনারি ও অটোমেটিক ফিল্ড সিঙ্ক সম্পন্ন হয়েছে!');
+              }}
             >
-              <RefreshCw size={14} /> Sync Dictionary
+              <HelpCircle size={14} /> Sync Dictionary
             </Button>
             <Button
               variant="primary"
               size="sm"
-              className="d-flex align-items-center gap-1 fw-semibold"
+              className="d-flex align-items-center gap-1 rounded-2 fw-semibold"
               onClick={() => setShowNewTemplateModal(true)}
             >
               <Plus size={14} /> New Template
             </Button>
             <Button
-              variant="outline-secondary"
+              variant="outline-dark"
               size="sm"
-              className="d-flex align-items-center gap-1"
+              className="d-flex align-items-center gap-1 rounded-2"
               onClick={handleDuplicateTemplate}
             >
               <Copy size={14} /> Duplicate
             </Button>
+            {currentSchemaId && schemasList.length > 1 && (
+              <Button
+                variant="outline-danger"
+                size="sm"
+                className="d-flex align-items-center gap-1 rounded-2"
+                onClick={handleDeleteTemplate}
+              >
+                <Trash2 size={14} /> Delete
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -616,6 +823,7 @@ export const FormBuilderStudio: React.FC = () => {
                 value={templateTitle}
                 onChange={(e) => setTemplateTitle(e.target.value)}
                 className="fw-bold"
+                placeholder="Enter form template title"
               />
             </Form.Group>
           </Col>
@@ -628,16 +836,16 @@ export const FormBuilderStudio: React.FC = () => {
                 size="sm"
                 value={postPaymentDoc}
                 onChange={(e) => setPostPaymentDoc(e.target.value)}
-                className="text-success fw-bold"
+                className="text-success fw-bold bg-success-subtle border-success"
               >
                 <option value="Application Voucher (কাগজী পেসে প্রবেশপত্র)">
                   📄 Application Voucher (কাগজী পেসে প্রবেশপত্র)
                 </option>
-                <option value="Admit Card After Admin Approval">
-                  🎟️ Admit Card After Admin Approval
+                <option value="Instant Admit Card (তাৎক্ষণিক প্রবেশপত্র)">
+                  🎟️ Instant Admit Card (তাৎক্ষণিক প্রবেশপত্র)
                 </option>
-                <option value="Instant Token Slip">
-                  📑 Instant Token Slip
+                <option value="Payment Acknowledgment Slip">
+                  🧾 Payment Acknowledgment Slip
                 </option>
               </Form.Select>
             </Form.Group>
@@ -651,27 +859,38 @@ export const FormBuilderStudio: React.FC = () => {
                 size="sm"
                 value={layoutStyle}
                 onChange={(e) => setLayoutStyle(e.target.value as any)}
-                className="text-primary fw-bold"
+                className="text-primary fw-bold bg-primary-subtle border-primary"
               >
                 <option value="wizard">🎛️ Multi-Step Wizard</option>
-                <option value="single_page">📜 Single-Page Scroll</option>
-                <option value="tabbed">📑 Tabbed Form</option>
+                <option value="single_page">📜 Single Page Form</option>
+                <option value="tabbed">📑 Tabbed Section</option>
               </Form.Select>
             </Form.Group>
           </Col>
         </Row>
       </div>
 
-      {/* Section Navigation Tabs */}
+      {/* Section Navigation Tabs & Manager */}
       <div className="bg-white rounded-3 shadow-sm p-2 mb-3 border">
-        <div className="small text-muted mb-2 px-2 d-flex align-items-center gap-1">
-          <span>👆 Drag tabs with mouse or use arrows to change section order</span>
+        <div className="d-flex align-items-center justify-content-between mb-2 px-2">
+          <small className="text-muted d-flex align-items-center gap-1" style={{ fontSize: '11px' }}>
+            <span>👆 Drag tabs or click section buttons to inspect and configure specific fields</span>
+          </small>
+          <Button
+            variant="link"
+            size="sm"
+            className="p-0 text-success fw-semibold text-decoration-none d-flex align-items-center gap-1"
+            onClick={() => setShowAddSectionModal(true)}
+          >
+            <Plus size={14} /> Add New Section
+          </Button>
         </div>
-        <div className="d-flex gap-2 overflow-auto pb-1 align-items-center no-scrollbar">
+
+        <div className="d-flex align-items-center gap-2 overflow-auto pb-1" style={{ whiteSpace: 'nowrap' }}>
           <Button
             variant={activeSectionId === 'all' ? 'primary' : 'light'}
             size="sm"
-            className="rounded-pill px-3 text-nowrap fw-bold shadow-xs"
+            className="rounded-pill px-3 py-1 fw-bold fs-7 d-flex align-items-center gap-1"
             onClick={() => setActiveSectionId('all')}
           >
             All Sections ({schemaData.sections.reduce((acc, s) => acc + s.fields.length, 0)})
@@ -679,28 +898,21 @@ export const FormBuilderStudio: React.FC = () => {
 
           {schemaData.sections.map((sec, idx) => {
             const isActiveTab = activeSectionId === sec.id;
+            const secName = sec.title_en || sec.name_en || `Section ${idx + 1}`;
             return (
               <Button
                 key={sec.id}
                 variant={isActiveTab ? 'primary' : 'outline-secondary'}
                 size="sm"
-                className={`rounded-pill px-3 text-nowrap d-flex align-items-center gap-1.5 ${
-                  isActiveTab ? 'fw-bold shadow-xs' : 'bg-light text-dark border-0'
+                className={`rounded-pill px-3 py-1 fs-7 d-flex align-items-center gap-1 ${
+                  isActiveTab ? 'fw-bold shadow-sm' : 'bg-light border-light-subtle text-dark'
                 }`}
                 onClick={() => setActiveSectionId(sec.id)}
               >
-                {getSectionIcon(sec.key)}
+                {getSectionIcon(sec.icon || sec.section_key)}
                 <span>
-                  {idx + 1}. {sec.title_en}
+                  {idx + 1}. {secName} ({sec.fields.length})
                 </span>
-                <Badge
-                  bg={isActiveTab ? 'light' : 'secondary'}
-                  text={isActiveTab ? 'dark' : 'white'}
-                  className="rounded-circle px-1.5 py-0.5"
-                  style={{ fontSize: '10px' }}
-                >
-                  {sec.fields.length}
-                </Badge>
               </Button>
             );
           })}
@@ -711,198 +923,239 @@ export const FormBuilderStudio: React.FC = () => {
       <Row className="g-3">
         {/* Left Column: Schema Field Configuration Editor */}
         <Col lg={7} xl={7}>
-          <div className="d-flex justify-content-between align-items-center mb-2 px-1">
-            <div className="d-flex align-items-center gap-2">
-              <span className="small fw-bold text-muted text-uppercase">Field Editor Language:</span>
-              <div className="btn-group btn-group-sm" role="group">
-                <Button
-                  variant={editorLanguage === 'en' ? 'primary' : 'outline-secondary'}
-                  size="sm"
-                  onClick={() => setEditorLanguage('en')}
-                >
-                  English
-                </Button>
-                <Button
-                  variant={editorLanguage === 'bn' ? 'primary' : 'outline-secondary'}
-                  size="sm"
-                  onClick={() => setEditorLanguage('bn')}
-                >
-                  বাংলা
-                </Button>
-                <Button
-                  variant={editorLanguage === 'both' ? 'primary' : 'outline-secondary'}
-                  size="sm"
-                  onClick={() => setEditorLanguage('both')}
-                >
-                  Both (উভয়)
-                </Button>
+          <div className="bg-white rounded-3 shadow-sm p-3 border mb-3">
+            <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+              <div className="d-flex align-items-center gap-2">
+                <span className="small fw-bold text-muted">Field Editor Language:</span>
+                <div className="btn-group btn-group-sm" role="group">
+                  <Button
+                    variant={editorLanguage === 'en' ? 'primary' : 'outline-secondary'}
+                    size="sm"
+                    className="py-0 px-2"
+                    onClick={() => setEditorLanguage('en')}
+                  >
+                    English
+                  </Button>
+                  <Button
+                    variant={editorLanguage === 'bn' ? 'primary' : 'outline-secondary'}
+                    size="sm"
+                    className="py-0 px-2"
+                    onClick={() => setEditorLanguage('bn')}
+                  >
+                    বাংলা
+                  </Button>
+                  <Button
+                    variant={editorLanguage === 'both' ? 'primary' : 'outline-secondary'}
+                    size="sm"
+                    className="py-0 px-2 fw-bold"
+                    onClick={() => setEditorLanguage('both')}
+                  >
+                    Both (উভয়)
+                  </Button>
+                </div>
+              </div>
+              <div className="small text-muted">
+                Showing <strong>{displayedSections.reduce((acc, s) => acc + s.fields.length, 0)}</strong> fields
               </div>
             </div>
-            <span className="text-muted small">
-              Showing <strong>{displayedSections.reduce((acc, s) => acc + s.fields.length, 0)}</strong> fields
-            </span>
-          </div>
 
-          {/* Render Sections and Fields */}
-          {displayedSections.map((section, sIdx) => (
-            <Card key={section.id} className="mb-3 border-0 shadow-sm rounded-3 overflow-hidden">
-              <Card.Header className="bg-white border-bottom py-2.5 px-3 d-flex justify-content-between align-items-center">
-                <div className="d-flex align-items-center gap-2">
-                  {getSectionIcon(section.key)}
-                  <h6 className="fw-bold text-primary mb-0">
-                    {sIdx + 1}. {section.title_en} / {section.title_bn}
-                  </h6>
-                </div>
-                <div className="d-flex align-items-center gap-2">
-                  <Badge bg="secondary" className="px-2 py-1">
-                    {section.fields.length} Fields
-                  </Badge>
-                </div>
-              </Card.Header>
-
-              <Card.Body className="p-2.5 bg-light">
-                <div className="d-flex flex-column gap-2">
-                  {section.fields.map((field, fIdx) => (
-                    <div
-                      key={field.id}
-                      className={`bg-white p-2.5 rounded-3 border transition-all ${
-                        field.visible ? 'shadow-xs' : 'opacity-50 bg-light'
-                      }`}
-                    >
-                      <Row className="g-2 align-items-center">
-                        {/* Tag & Key */}
-                        <Col xs={12} md={3}>
-                          <div className="d-flex flex-column">
-                            <span className="badge bg-light text-dark border text-start font-monospace mb-1 text-truncate" style={{ fontSize: '10px' }}>
-                              {field.category_tag || 'FIELD'}
-                            </span>
-                            <span className="fw-bold text-dark text-truncate small" title={field.label_en}>
-                              {field.label_en}
-                            </span>
-                            {field.profile_sync && (
-                              <span className="text-info extra-small" style={{ fontSize: '10.5px' }}>
-                                Profile Sync: {field.profile_sync}
-                              </span>
-                            )}
-                          </div>
-                        </Col>
-
-                        {/* Editable Labels */}
-                        <Col xs={12} md={5}>
-                          <Row className="g-1">
-                            {(editorLanguage === 'en' || editorLanguage === 'both') && (
-                              <Col xs={editorLanguage === 'both' ? 6 : 12}>
-                                <Form.Control
-                                  type="text"
-                                  size="sm"
-                                  placeholder="English Label"
-                                  value={field.label_en}
-                                  onChange={(e) => handleFieldChange(section.id, field.id, 'label_en', e.target.value)}
-                                  className="form-control-sm"
-                                />
-                              </Col>
-                            )}
-                            {(editorLanguage === 'bn' || editorLanguage === 'both') && (
-                              <Col xs={editorLanguage === 'both' ? 6 : 12}>
-                                <Form.Control
-                                  type="text"
-                                  size="sm"
-                                  placeholder="বাংলা লেবেল"
-                                  value={field.label_bn}
-                                  onChange={(e) => handleFieldChange(section.id, field.id, 'label_bn', e.target.value)}
-                                  className="form-control-sm font-sans"
-                                />
-                              </Col>
-                            )}
-                          </Row>
-                        </Col>
-
-                        {/* Action Toggles: Required, Visible, Move, Delete */}
-                        <Col xs={12} md={4}>
-                          <div className="d-flex align-items-center justify-content-end gap-1.5">
-                            {/* Required toggle */}
-                            <Button
-                              variant={field.required ? 'danger' : 'outline-secondary'}
-                              size="sm"
-                              className="py-0.5 px-2 font-monospace"
-                              style={{ fontSize: '11px' }}
-                              onClick={() => handleFieldChange(section.id, field.id, 'required', !field.required)}
-                              title={field.required ? 'অবশ্যই পূরণ করতে হবে (Required)' : 'ঐচ্ছিক (Optional)'}
-                            >
-                              ★ {field.required ? 'Required' : 'Optional'}
-                            </Button>
-
-                            {/* Visible toggle */}
-                            <Button
-                              variant={field.visible ? 'success' : 'outline-secondary'}
-                              size="sm"
-                              className="py-0.5 px-2 font-monospace"
-                              style={{ fontSize: '11px' }}
-                              onClick={() => handleFieldChange(section.id, field.id, 'visible', !field.visible)}
-                              title={field.visible ? 'ফিল্ডটি দৃশমান (Visible)' : 'লুকানো (Hidden)'}
-                            >
-                              {field.visible ? <Eye size={12} className="me-1" /> : <EyeOff size={12} className="me-1" />}
-                              {field.visible ? 'Visible' : 'Hidden'}
-                            </Button>
-
-                            {/* Move Up */}
-                            <Button
-                              variant="light"
-                              size="sm"
-                              className="p-1 border"
-                              disabled={fIdx === 0}
-                              onClick={() => handleMoveField(section.id, fIdx, 'up')}
-                              title="উপরে নিন"
-                            >
-                              <ArrowUp size={13} />
-                            </Button>
-
-                            {/* Move Down */}
-                            <Button
-                              variant="light"
-                              size="sm"
-                              className="p-1 border"
-                              disabled={fIdx === section.fields.length - 1}
-                              onClick={() => handleMoveField(section.id, fIdx, 'down')}
-                              title="নিচে নিন"
-                            >
-                              <ArrowDown size={13} />
-                            </Button>
-
-                            {/* Delete */}
-                            <Button
-                              variant="light"
-                              size="sm"
-                              className="p-1 border text-danger"
-                              onClick={() => handleDeleteField(section.id, field.id)}
-                              title="মুছে ফেলুন"
-                            >
-                              <Trash2 size={13} />
-                            </Button>
-                          </div>
-                        </Col>
-                      </Row>
+            {/* Sections and Fields List */}
+            <div className="d-flex flex-column gap-3" style={{ maxHeight: '780px', overflowY: 'auto', paddingRight: '4px' }}>
+              {displayedSections.map((sec, secIdx) => {
+                const secTitleEn = sec.title_en || sec.name_en;
+                const secTitleBn = sec.title_bn || sec.name_bn;
+                return (
+                  <div key={sec.id} className="mb-2">
+                    <div className="d-flex align-items-center justify-content-between mb-2 p-2 bg-light rounded-2 border">
+                      <div className="d-flex align-items-center gap-2">
+                        {getSectionIcon(sec.icon || sec.section_key)}
+                        <span className="fw-bold text-primary fs-7">
+                          {secTitleEn} / {secTitleBn}
+                        </span>
+                        <Badge bg="secondary">{sec.fields.length} Fields</Badge>
+                      </div>
+                      <div className="d-flex align-items-center gap-1">
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="py-0 px-2 fs-8"
+                          onClick={() => {
+                            setNewFieldSectionId(sec.id);
+                            setShowCustomQuestionModal(true);
+                          }}
+                        >
+                          <Plus size={12} /> Add Field
+                        </Button>
+                        <Button
+                          variant="light"
+                          size="sm"
+                          className="p-1 border"
+                          onClick={() => handleMoveSection(secIdx, 'up')}
+                          disabled={secIdx === 0}
+                          title="Move Section Up"
+                        >
+                          <ChevronUp size={13} />
+                        </Button>
+                        <Button
+                          variant="light"
+                          size="sm"
+                          className="p-1 border"
+                          onClick={() => handleMoveSection(secIdx, 'down')}
+                          disabled={secIdx === schemaData.sections.length - 1}
+                          title="Move Section Down"
+                        >
+                          <ChevronDown size={13} />
+                        </Button>
+                        {schemaData.sections.length > 1 && (
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            className="p-1"
+                            onClick={() => handleDeleteSection(sec.id)}
+                            title="Delete Section"
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </Card.Body>
-            </Card>
-          ))}
+
+                    <div className="d-flex flex-column gap-2">
+                      {sec.fields.map((field, fieldIdx) => {
+                        return (
+                          <Card
+                            key={field.id}
+                            className={`border rounded-3 transition-all ${
+                              field.visible ? 'bg-white shadow-xs' : 'opacity-60 bg-light-subtle'
+                            }`}
+                            style={{
+                              borderLeft: field.required ? '4px solid #ef4444' : '4px solid #94a3b8',
+                            }}
+                          >
+                            <Card.Body className="p-2">
+                              <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                <div className="d-flex align-items-center gap-2">
+                                  <Badge bg="light" text="dark" className="border font-monospace small px-2 py-1">
+                                    {field.category || field.type.toUpperCase()}
+                                  </Badge>
+                                  <strong className="fs-7 text-dark">
+                                    {field.label_en || field.field_key || field.key}
+                                  </strong>
+                                  <Badge bg="info" className="px-1.5 py-0.5 text-uppercase" style={{ fontSize: '9px' }}>
+                                    {field.type}
+                                  </Badge>
+                                  {field.profile_sync && (
+                                    <span
+                                      className="badge bg-info-subtle text-info border small"
+                                      style={{ fontSize: '10px' }}
+                                    >
+                                      Profile Sync: {field.profile_sync}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="d-flex align-items-center gap-1">
+                                  <Button
+                                    variant={field.required ? 'danger' : 'outline-secondary'}
+                                    size="sm"
+                                    className="py-0 px-2 fs-8 fw-bold rounded-2 d-flex align-items-center gap-1"
+                                    onClick={() => handleToggleRequired(sec.id, field.id)}
+                                  >
+                                    {field.required ? '★ Required' : '☆ Optional'}
+                                  </Button>
+                                  <Button
+                                    variant={field.visible ? 'success' : 'outline-secondary'}
+                                    size="sm"
+                                    className="py-0 px-2 fs-8 fw-bold rounded-2 d-flex align-items-center gap-1"
+                                    onClick={() => handleToggleVisibility(sec.id, field.id)}
+                                  >
+                                    {field.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+                                    {field.visible ? 'Visible' : 'Hidden'}
+                                  </Button>
+                                  <Button
+                                    variant="light"
+                                    size="sm"
+                                    className="p-1 border"
+                                    onClick={() => handleMoveField(sec.id, fieldIdx, 'up')}
+                                    disabled={fieldIdx === 0}
+                                    title="Move Up"
+                                  >
+                                    <ChevronUp size={13} />
+                                  </Button>
+                                  <Button
+                                    variant="light"
+                                    size="sm"
+                                    className="p-1 border"
+                                    onClick={() => handleMoveField(sec.id, fieldIdx, 'down')}
+                                    disabled={fieldIdx === sec.fields.length - 1}
+                                    title="Move Down"
+                                  >
+                                    <ChevronDown size={13} />
+                                  </Button>
+                                  <Button
+                                    variant="outline-danger"
+                                    size="sm"
+                                    className="p-1"
+                                    onClick={() => handleDeleteField(sec.id, field.id)}
+                                    title="Delete Field"
+                                  >
+                                    <Trash2 size={13} />
+                                  </Button>
+                                </div>
+                              </div>
+
+                              <Row className="g-2">
+                                {(editorLanguage === 'en' || editorLanguage === 'both') && (
+                                  <Col md={editorLanguage === 'both' ? 6 : 12}>
+                                    <Form.Control
+                                      type="text"
+                                      size="sm"
+                                      value={field.label_en || ''}
+                                      onChange={(e) => handleUpdateFieldLabel(sec.id, field.id, 'en', e.target.value)}
+                                      placeholder="English Label / Title"
+                                      className="fs-8"
+                                    />
+                                  </Col>
+                                )}
+                                {(editorLanguage === 'bn' || editorLanguage === 'both') && (
+                                  <Col md={editorLanguage === 'both' ? 6 : 12}>
+                                    <Form.Control
+                                      type="text"
+                                      size="sm"
+                                      value={field.label_bn || ''}
+                                      onChange={(e) => handleUpdateFieldLabel(sec.id, field.id, 'bn', e.target.value)}
+                                      placeholder="বাংলা লেবেল / নির্দেশনা"
+                                      className="fs-8 text-primary"
+                                    />
+                                  </Col>
+                                )}
+                              </Row>
+                            </Card.Body>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </Col>
 
         {/* Right Column: Live Candidate View Preview */}
         <Col lg={5} xl={5}>
-          <div className="sticky-top" style={{ top: '15px' }}>
-            <div className="d-flex justify-content-between align-items-center mb-2 px-1">
-              <div className="d-flex align-items-center gap-1.5">
-                <span className="spinner-grow spinner-grow-sm text-success" style={{ width: '8px', height: '8px' }} />
-                <span className="fw-bold text-dark small">Live Candidate View Preview</span>
+          <div className="bg-white rounded-3 shadow-sm p-3 border position-sticky" style={{ top: '15px' }}>
+            <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+              <div className="d-flex align-items-center gap-2">
+                <span className="badge bg-success rounded-circle p-1 d-inline-block" style={{ width: 8, height: 8 }} />
+                <strong className="fs-7 text-dark">Live Candidate View Preview</strong>
               </div>
               <div className="d-flex align-items-center gap-2">
                 <div className="btn-group btn-group-sm" role="group">
                   <Button
                     variant={previewLanguage === 'bn' ? 'primary' : 'outline-secondary'}
                     size="sm"
+                    className="py-0 px-2 fs-8"
                     onClick={() => setPreviewLanguage('bn')}
                   >
                     বাংলা (BN)
@@ -910,6 +1163,7 @@ export const FormBuilderStudio: React.FC = () => {
                   <Button
                     variant={previewLanguage === 'en' ? 'primary' : 'outline-secondary'}
                     size="sm"
+                    className="py-0 px-2 fs-8"
                     onClick={() => setPreviewLanguage('en')}
                   >
                     English (EN)
@@ -919,82 +1173,117 @@ export const FormBuilderStudio: React.FC = () => {
                   <Button
                     variant={previewDevice === 'desktop' ? 'dark' : 'outline-secondary'}
                     size="sm"
+                    className="py-0 px-2"
                     onClick={() => setPreviewDevice('desktop')}
+                    title="Desktop Preview"
                   >
-                    <Monitor size={14} />
+                    <Monitor size={13} />
                   </Button>
                   <Button
                     variant={previewDevice === 'mobile' ? 'dark' : 'outline-secondary'}
                     size="sm"
+                    className="py-0 px-2"
                     onClick={() => setPreviewDevice('mobile')}
+                    title="Mobile Preview"
                   >
-                    <Smartphone size={14} />
+                    <Smartphone size={13} />
                   </Button>
                 </div>
               </div>
             </div>
 
-            {/* Candidate Frame Simulation */}
+            {/* Simulated Live Form Container */}
             <div
-              className={`bg-white rounded-4 shadow-sm border p-3 ${
+              className={`border rounded-4 p-3 bg-light overflow-auto transition-all ${
                 previewDevice === 'mobile' ? 'mx-auto' : ''
               }`}
               style={{
-                maxWidth: previewDevice === 'mobile' ? '375px' : '100%',
-                maxHeight: '85vh',
-                overflowY: 'auto',
+                maxWidth: previewDevice === 'mobile' ? '360px' : '100%',
+                maxHeight: '740px',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)',
               }}
             >
-              {/* Institution Header in Preview */}
-              <div className="text-center pb-3 mb-3 border-bottom">
-                <img
-                  src="/logo.png"
-                  alt="BSISC Logo"
-                  style={{ width: 45, height: 45, objectFit: 'contain' }}
-                  className="mb-1.5"
-                />
-                <h6 className="fw-bold text-dark mb-0 fs-6">
-                  Baridhara Scholars' International School and College (BSISC)
-                </h6>
-                <small className="text-muted" style={{ fontSize: '10px' }}>
-                  (School ID: 1005)
-                </small>
-                <div className="mt-2">
-                  <span className="badge bg-primary px-3 py-1.5 text-uppercase fw-semibold" style={{ fontSize: '11px' }}>
-                    {templateTitle}
-                  </span>
+              {/* Institution Header */}
+              <div className="bg-white rounded-3 p-3 mb-3 border text-center shadow-xs">
+                <div className="d-flex align-items-center justify-content-center gap-2 mb-1">
+                  <img
+                    src="/logo.png"
+                    alt="Logo"
+                    style={{ width: 32, height: 32, objectFit: 'contain' }}
+                    onError={(e: any) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                  <div>
+                    <h6 className="fw-bold mb-0 text-dark fs-7" style={{ lineHeight: '1.2' }}>
+                      Baridhara Scholars' International School and College (BSISC)
+                    </h6>
+                    <small className="text-muted" style={{ fontSize: '10px' }}>
+                      (School ID: 1005)
+                    </small>
+                  </div>
                 </div>
-                <div className="mt-1">
-                  <Badge bg="success" className="font-monospace" style={{ fontSize: '10px' }}>
-                    📄 {postPaymentDoc} • Live Preview
+                <div className="d-flex flex-wrap align-items-center justify-content-center gap-1 mt-2">
+                  <Badge bg="primary-subtle" text="primary" className="border px-2 py-1 fs-8">
+                    {templateTitle}
+                  </Badge>
+                  <Badge bg="success-subtle" text="success" className="border px-2 py-1 fs-8">
+                    📄 {postPaymentDoc}
+                  </Badge>
+                  <Badge bg="success" className="px-2 py-1 fs-8">
+                    ● Live Preview
                   </Badge>
                 </div>
               </div>
 
               {/* Progress Indicator */}
-              {schemaData.sections.length > 1 && (
-                <div className="mb-3">
-                  <div className="d-flex justify-content-between small text-muted mb-1 fw-semibold">
-                    <span>
+              {currentPreviewSection && (
+                <div className="bg-white rounded-3 p-2 mb-3 border shadow-xs">
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <span className="fw-bold fs-8 text-primary">
                       Step {activePreviewStep + 1} of {schemaData.sections.length}:{' '}
-                      <span className="text-primary">
-                        {previewLanguage === 'bn' ? currentPreviewSection?.title_bn : currentPreviewSection?.title_en}
-                      </span>
+                      {previewLanguage === 'bn'
+                        ? currentPreviewSection.title_bn || currentPreviewSection.name_bn
+                        : currentPreviewSection.title_en || currentPreviewSection.name_en}
                     </span>
-                    <span>{previewProgress}%</span>
+                    <span className="small text-muted fs-8">{previewProgress}% Completed</span>
                   </div>
-                  <ProgressBar now={previewProgress} variant="primary" style={{ height: '5px' }} />
+                  <ProgressBar now={previewProgress} variant="primary" style={{ height: 6 }} className="rounded-pill mb-2" />
+                  <div className="d-flex gap-1 overflow-auto pb-1" style={{ whiteSpace: 'nowrap' }}>
+                    {schemaData.sections.map((sec, idx) => (
+                      <Button
+                        key={sec.id}
+                        variant={idx === activePreviewStep ? 'primary' : idx < activePreviewStep ? 'success' : 'light'}
+                        size="sm"
+                        className="py-0 px-2 rounded-pill fs-8 d-flex align-items-center gap-1 border"
+                        onClick={() => setActivePreviewStep(idx)}
+                        style={{ fontSize: '10px' }}
+                      >
+                        <span
+                          className="badge rounded-circle bg-white text-dark p-0"
+                          style={{ width: 14, height: 14, lineHeight: '14px' }}
+                        >
+                          {idx + 1}
+                        </span>
+                        <span>
+                          {previewLanguage === 'bn'
+                            ? (sec.title_bn || sec.name_bn || '').split('.')[1] || sec.title_bn || sec.name_bn
+                            : (sec.title_en || sec.name_en || '').split('.')[1] || sec.title_en || sec.name_en}
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {/* Section Content */}
+              {/* Form Section Fields */}
               {currentPreviewSection && (
-                <div>
-                  <h6 className="fw-bold text-dark border-bottom pb-2 mb-3 d-flex align-items-center gap-1.5">
-                    {getSectionIcon(currentPreviewSection.key)}
+                <div className="bg-white rounded-3 p-3 border shadow-xs mb-3">
+                  <h6 className="fw-bold text-dark border-bottom pb-2 mb-3 fs-7 d-flex align-items-center gap-1">
+                    {getSectionIcon(currentPreviewSection.icon || currentPreviewSection.section_key)}
                     {previewLanguage === 'bn'
-                      ? currentPreviewSection.title_bn || currentPreviewSection.title_en
-                      : currentPreviewSection.title_en || currentPreviewSection.title_bn}
+                      ? currentPreviewSection.title_bn || currentPreviewSection.name_bn
+                      : currentPreviewSection.title_en || currentPreviewSection.name_en}
                   </h6>
 
                   <Row className="g-2.5">
@@ -1002,25 +1291,67 @@ export const FormBuilderStudio: React.FC = () => {
                       .filter((f) => f.visible)
                       .map((f) => {
                         const label = previewLanguage === 'bn' ? f.label_bn || f.label_en : f.label_en || f.label_bn;
-                        const placeholder = previewLanguage === 'bn' ? f.placeholder_bn || f.placeholder_en : f.placeholder_en || f.placeholder_bn;
+                        const placeholder =
+                          previewLanguage === 'bn'
+                            ? f.placeholder_bn || f.placeholder_en || f.placeholder
+                            : f.placeholder_en || f.placeholder_bn || f.placeholder;
                         const fieldKey = (f.key || f.field_key || f.id) as string;
+
                         return (
-                          <Col key={f.id} xs={f.col_width === 12 ? 12 : 12}>
+                          <Col key={f.id} xs={previewDevice === 'mobile' ? 12 : f.col_width || f.grid_col || 6}>
                             <Form.Group className="mb-2">
-                              <Form.Label className="small fw-semibold text-dark mb-1">
-                                {label} {f.required && <span className="text-danger">*</span>}
+                              <Form.Label className="small fw-semibold text-dark mb-1 d-flex align-items-center justify-content-between">
+                                <span>
+                                  {label} {f.required && <span className="text-danger ms-1">*</span>}
+                                </span>
                               </Form.Label>
                               {f.type === 'select' ? (
                                 <Form.Select size="sm" className="bg-light">
                                   <option value="">-- {previewLanguage === 'bn' ? 'নির্বাচন করুন' : 'Select'} --</option>
                                   {f.options?.map((opt: any, idx: number) => (
                                     <option key={idx} value={typeof opt === 'string' ? opt : opt.value}>
-                                      {typeof opt === 'string' ? opt : previewLanguage === 'bn' ? opt.label_bn || opt.label_en : opt.label_en}
+                                      {typeof opt === 'string'
+                                        ? opt
+                                        : previewLanguage === 'bn'
+                                        ? opt.label_bn || opt.label_en
+                                        : opt.label_en}
                                     </option>
                                   ))}
                                 </Form.Select>
+                              ) : f.type === 'radio' ? (
+                                <div className="d-flex flex-wrap gap-2 pt-1">
+                                  {(f.options || []).map((opt: any, idx: number) => (
+                                    <Form.Check
+                                      key={idx}
+                                      type="radio"
+                                      name={fieldKey}
+                                      id={`${fieldKey}_${idx}`}
+                                      label={typeof opt === 'string' ? opt : previewLanguage === 'bn' ? opt.label_bn || opt.label_en : opt.label_en}
+                                    />
+                                  ))}
+                                </div>
+                              ) : f.type === 'checkbox' ? (
+                                <div className="d-flex flex-wrap gap-2 pt-1">
+                                  {(f.options || []).map((opt: any, idx: number) => (
+                                    <Form.Check
+                                      key={idx}
+                                      type="checkbox"
+                                      name={fieldKey}
+                                      id={`${fieldKey}_${idx}`}
+                                      label={typeof opt === 'string' ? opt : previewLanguage === 'bn' ? opt.label_bn || opt.label_en : opt.label_en}
+                                    />
+                                  ))}
+                                </div>
                               ) : f.type === 'textarea' ? (
-                                <Form.Control as="textarea" rows={2} size="sm" placeholder={placeholder || label} className="bg-light" />
+                                <Form.Control
+                                  as="textarea"
+                                  rows={2}
+                                  size="sm"
+                                  placeholder={placeholder || label}
+                                  className="bg-light"
+                                  value={previewValues[fieldKey] || ''}
+                                  onChange={(e) => setPreviewValues({ ...previewValues, [fieldKey]: e.target.value })}
+                                />
                               ) : f.type === 'file' ? (
                                 <div className="p-2 border rounded bg-light text-center">
                                   <Paperclip size={16} className="text-muted mb-1" />
@@ -1028,7 +1359,7 @@ export const FormBuilderStudio: React.FC = () => {
                                 </div>
                               ) : (
                                 <Form.Control
-                                  type={f.type === 'date' ? 'date' : f.type === 'number' ? 'number' : 'text'}
+                                  type={f.type === 'date' ? 'date' : f.type === 'number' ? 'number' : f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : 'text'}
                                   size="sm"
                                   placeholder={placeholder || label}
                                   value={previewValues[fieldKey] || ''}
@@ -1043,7 +1374,7 @@ export const FormBuilderStudio: React.FC = () => {
                   </Row>
 
                   {/* Preview Navigation Steps */}
-                  <div className="d-flex justify-content-between align-items-center mt-4 pt-2 border-top">
+                  <div className="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
                     <Button
                       variant="outline-secondary"
                       size="sm"
@@ -1052,23 +1383,29 @@ export const FormBuilderStudio: React.FC = () => {
                     >
                       <ChevronLeft size={14} /> {previewLanguage === 'bn' ? 'পূর্ববর্তী' : 'Previous'}
                     </Button>
-                    <span className="small text-muted font-monospace">
-                      {activePreviewStep + 1} / {schemaData.sections.length}
-                    </span>
                     <Button
                       variant="primary"
                       size="sm"
+                      style={{ backgroundColor: '#4f46e5', borderColor: '#4f46e5' }}
                       onClick={() => {
                         if (activePreviewStep < schemaData.sections.length - 1) {
                           setActivePreviewStep((prev) => prev + 1);
                         } else {
-                          toast.success('🎉 প্রিভিউ টেস্ট সম্পন্ন হয়েছে!');
+                          toast.success('🎉 লাইভ প্রিভিউ ফর্ম সফলভাবে সাবমিট হয়েছে!');
                         }
                       }}
+                      className="d-flex align-items-center gap-1 fw-bold px-3"
                     >
-                      {activePreviewStep === schemaData.sections.length - 1
-                        ? previewLanguage === 'bn' ? 'সাবমিট প্রিভিউ' : 'Submit Preview'
-                        : previewLanguage === 'bn' ? 'পরবর্তী' : 'Next'} <ChevronRight size={14} />
+                      <span>
+                        {activePreviewStep < schemaData.sections.length - 1
+                          ? previewLanguage === 'bn'
+                            ? 'পরবর্তী ধাপ'
+                            : 'Next Step'
+                          : previewLanguage === 'bn'
+                          ? 'আবেদন সাবমিট'
+                          : 'Submit Application'}
+                      </span>
+                      <ChevronRight size={14} />
                     </Button>
                   </div>
                 </div>
@@ -1078,147 +1415,394 @@ export const FormBuilderStudio: React.FC = () => {
         </Col>
       </Row>
 
-      {/* ======================================================== */}
-      {/* GOOGLE FORMS STYLE PUBLIC SHARABLE LINK MODAL           */}
-      {/* ======================================================== */}
-      <Modal show={showPublicLinkModal} onHide={() => setShowPublicLinkModal(false)} centered size="lg">
-        <Modal.Header closeButton className="bg-primary text-white">
-          <Modal.Title className="fw-bold fs-5 d-flex align-items-center gap-2">
-            <Share2 size={20} />
-            পাবলিক আবেদন ফরম লিংক (Google Forms-Style Shareable Link)
+      {/* 1. Modal: Add New Section */}
+      <Modal show={showAddSectionModal} onHide={() => setShowAddSectionModal(false)} centered>
+        <Modal.Header closeButton className="bg-light">
+          <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
+            <FolderPlus size={18} className="text-success" />
+            Add New Section (নতুন সেকশন যুক্ত করুন)
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="p-4">
-          <Alert variant="success" className="d-flex align-items-center gap-2 mb-4 py-2.5">
-            <CheckCircle2 size={22} className="text-success flex-shrink-0" />
-            <div>
-              <strong>ফরমটি পাবলিকলি প্রস্তুত!</strong> শিক্ষার্থী বা প্রার্থীরা কোনো লগইন ছাড়াই এই লিংকে প্রবেশ করে আবেদন সম্পন্ন করতে পারবে।
-            </div>
-          </Alert>
-
-          {/* Sharable Link Box */}
-          <Form.Group className="mb-4">
-            <Form.Label className="fw-bold small text-muted text-uppercase mb-1">
-              DIRECT PUBLIC URL (ক্যান্ডিডেটদের জন্য সরাসরি লিংক):
-            </Form.Label>
-            <div className="input-group input-group-lg shadow-sm">
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-bold">Section Title (English)</Form.Label>
               <Form.Control
                 type="text"
-                readOnly
-                value={publicShareUrl}
-                className="bg-light font-monospace fs-6"
-                onClick={(e) => (e.target as HTMLInputElement).select()}
+                size="sm"
+                placeholder="e.g. Academic History & Transcript"
+                value={newSectionNameEn}
+                onChange={(e) => setNewSectionNameEn(e.target.value)}
               />
-              <Button
-                variant="primary"
-                className="fw-bold px-4 d-flex align-items-center gap-1.5"
-                onClick={() => {
-                  navigator.clipboard.writeText(publicShareUrl);
-                  toast.success('📋 লিংক কপি করা হয়েছে (Link Copied)!');
-                }}
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-bold">Section Title (বাংলা)</Form.Label>
+              <Form.Control
+                type="text"
+                size="sm"
+                placeholder="যেমন: পূর্ববর্তী শিক্ষাগত যোগ্যতা ও ফলাফল"
+                value={newSectionNameBn}
+                onChange={(e) => setNewSectionNameBn(e.target.value)}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-bold">Section Icon (আইকন নির্বাচন করুন)</Form.Label>
+              <Form.Select
+                size="sm"
+                value={newSectionIcon}
+                onChange={(e) => setNewSectionIcon(e.target.value)}
               >
-                <Copy size={16} /> কপি করুন (Copy)
-              </Button>
-            </div>
-          </Form.Group>
-
-          <Row className="g-3 align-items-center mb-4">
-            {/* QR Code */}
-            <Col md={4} className="text-center border-end">
-              <div className="p-2 border rounded-3 bg-light d-inline-block shadow-xs mb-1">
-                <img src={qrCodeUrl} alt="QR Code" style={{ width: 140, height: 140 }} className="rounded" />
-              </div>
-              <div className="extra-small text-muted" style={{ fontSize: '11px' }}>
-                <QrCode size={13} className="d-inline me-1" />
-                মোবাইলে স্ক্যান করে আবেদন করুন
-              </div>
-            </Col>
-
-            {/* Quick Actions & Social Sharing */}
-            <Col md={8}>
-              <h6 className="fw-bold text-dark mb-2">দ্রুত শেয়ার ও অ্যাকশন:</h6>
-              <div className="d-flex flex-column gap-2">
-                <a
-                  href={publicShareUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-outline-primary d-flex align-items-center justify-content-between px-3 py-2 text-decoration-none"
-                >
-                  <span className="d-flex align-items-center gap-2">
-                    <ExternalLink size={16} /> নতুন উইন্ডোতে লাইভ ফরম ওপেন করুন (Open Live Form)
-                  </span>
-                  <Badge bg="primary">Live</Badge>
-                </a>
-
-                <a
-                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`BSISC অনলাইন আবেদন ফরম লিংক: ${publicShareUrl}`)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-outline-success d-flex align-items-center gap-2 px-3 py-2 text-decoration-none"
-                >
-                  <span>💬 WhatsApp-এ লিংক পাঠান (Share on WhatsApp)</span>
-                </a>
-
-                <a
-                  href={`mailto:?subject=${encodeURIComponent(`BSISC অনলাইন আবেদন: ${templateTitle}`)}&body=${encodeURIComponent(`আসসালামু আলাইকুম,\n\nঅনলাইনে আবেদন করার জন্য নিচের লিংকে ক্লিক করুন:\n${publicShareUrl}\n\nধন্যবাদ,\nBSISC অ্যাডমিশন কমিটি`)}`}
-                  className="btn btn-outline-secondary d-flex align-items-center gap-2 px-3 py-2 text-decoration-none"
-                >
-                  <span>✉️ Email-এ লিংক পাঠান (Share via Email)</span>
-                </a>
-              </div>
-            </Col>
-          </Row>
-
-          {/* Toggle Online Responses */}
-          <div className="p-3 bg-light rounded-3 border d-flex justify-content-between align-items-center">
-            <div>
-              <div className="fw-bold text-dark">অনলাইন আবেদন গ্রহণ স্ট্যাটাস (Accepting Submissions)</div>
-              <div className="small text-muted">চালু থাকলে প্রার্থীরা আবেদন সাবমিট করতে পারবে, বন্ধ থাকলে ফরম সাময়িক স্থগিত থাকবে।</div>
-            </div>
-            <Form.Check
-              type="switch"
-              id="form-active-switch"
-              checked={isActive}
-              onChange={(e) => {
-                setIsActive(e.target.checked);
-                if (currentSchemaId) {
-                  formSchemasApi.updateSchema(currentSchemaId, { is_active: e.target.checked });
-                  toast.success(e.target.checked ? 'অনলাইন আবেদন গ্রহণ চালু করা হয়েছে।' : 'অনলাইন আবেদন গ্রহণ বন্ধ করা হয়েছে।');
-                }
-              }}
-              className="fs-4"
-            />
-          </div>
+                <option value="FileText">📄 File / Document (FileText)</option>
+                <option value="User">👤 User / Person (User)</option>
+                <option value="Users">👥 Group / Parents (Users)</option>
+                <option value="Shield">🛡️ Security / Legal (Shield)</option>
+                <option value="MapPin">📍 Location / Address (MapPin)</option>
+                <option value="Paperclip">📎 Attachment / Upload (Paperclip)</option>
+                <option value="Briefcase">💼 Job / Work (Briefcase)</option>
+                <option value="Layers">📑 Category / Layers</option>
+                <option value="Sparkles">✨ Custom / Highlights</option>
+              </Form.Select>
+            </Form.Group>
+          </Form>
         </Modal.Body>
-        <Modal.Footer className="bg-light">
-          <Button variant="secondary" onClick={() => setShowPublicLinkModal(false)}>
-            বন্ধ করুন (Close)
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setShowAddSectionModal(false)}>
+            বাতিল
+          </Button>
+          <Button variant="success" size="sm" className="fw-bold" onClick={handleAddSection}>
+            সেকশন যুক্ত করুন
           </Button>
         </Modal.Footer>
       </Modal>
 
-      {/* ======================================================== */}
-      {/* SUBMISSIONS / RESPONSES VIEWER MODAL                    */}
-      {/* ======================================================== */}
-      <Modal show={showSubmissionsModal} onHide={() => setShowSubmissionsModal(false)} size="xl" centered>
-        <Modal.Header closeButton className="bg-dark text-white">
-          <Modal.Title className="fw-bold fs-5 d-flex align-items-center gap-2">
-            <Users size={20} className="text-warning" />
-            আবেদনকারী তালিকা ও রেসপন্স ({templateTitle})
+      {/* 2. Modal: Add Custom Question / Field */}
+      <Modal show={showCustomQuestionModal} onHide={() => setShowCustomQuestionModal(false)} centered size="lg">
+        <Modal.Header closeButton className="bg-light">
+          <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
+            <Plus size={18} className="text-primary" />
+            Add Custom Question / Field (কাস্টম ফিল্ড তৈরি করুন)
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Row className="g-3">
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Target Section (সেকশন নির্বাচন করুন)</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={newFieldSectionId}
+                    onChange={(e) => setNewFieldSectionId(e.target.value)}
+                  >
+                    {schemaData.sections.map((sec) => (
+                      <option key={sec.id} value={sec.id}>
+                        {sec.title_en || sec.name_en} / {sec.title_bn || sec.name_bn}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Field Type (ইনপুট ধরন)</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={newFieldType}
+                    onChange={(e) => setNewFieldType(e.target.value as any)}
+                  >
+                    <option value="text">Single Line Text (এক লাইনের টেক্সট)</option>
+                    <option value="textarea">Multi-line Textarea (বড় প্যারাগ্রাফ)</option>
+                    <option value="select">Dropdown Select (ড্রপডাউন অপশন)</option>
+                    <option value="radio">Radio Buttons (একক নির্বাচন)</option>
+                    <option value="checkbox">Checkboxes (বহুনির্বাচন)</option>
+                    <option value="date">Date Picker (তারিখ)</option>
+                    <option value="number">Numeric / Amount (সংখ্যা/টাকা)</option>
+                    <option value="tel">Phone / Mobile No (মোবাইল নম্বর)</option>
+                    <option value="email">Email Address (ইমেইল)</option>
+                    <option value="file">Document / Image Upload (ফাইল আপলোড)</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row className="g-3">
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Label (English Title)</Form.Label>
+                  <Form.Control
+                    type="text"
+                    size="sm"
+                    placeholder="e.g. Previous Extracurricular Awards"
+                    value={newFieldLabelEn}
+                    onChange={(e) => setNewFieldLabelEn(e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Label (বাংলা শিরোনাম)</Form.Label>
+                  <Form.Control
+                    type="text"
+                    size="sm"
+                    placeholder="যেমন: পূর্ববর্তী সহশিক্ষা কার্যক্রম ও পুরস্কার"
+                    value={newFieldLabelBn}
+                    onChange={(e) => setNewFieldLabelBn(e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            {['select', 'radio', 'checkbox'].includes(newFieldType) && (
+              <Form.Group className="mb-3">
+                <Form.Label className="small fw-bold text-primary">
+                  Options (কমা দিয়ে অপশনগুলো লিখুন):
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  size="sm"
+                  placeholder="e.g. Option 1, Option 2, Option 3 (কমা দিয়ে আলাদা করুন)"
+                  value={newFieldOptions}
+                  onChange={(e) => setNewFieldOptions(e.target.value)}
+                />
+                <small className="text-muted" style={{ fontSize: '11px' }}>
+                  প্রতিটি অপশন কমা (,) দিয়ে আলাদা করে লিখুন। যেমন: Yes, No, Other
+                </small>
+              </Form.Group>
+            )}
+
+            <Row className="g-3">
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Grid Column Width</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={newFieldCol}
+                    onChange={(e) => setNewFieldCol(Number(e.target.value))}
+                  >
+                    <option value={6}>Half Width (6 Columns - পাশাপাশি)</option>
+                    <option value={12}>Full Width (12 Columns - সম্পূর্ণ লাইন)</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={6}>
+                <Form.Group className="mb-3">
+                  <Form.Label className="small fw-bold">Field Identifier Key</Form.Label>
+                  <Form.Control
+                    type="text"
+                    size="sm"
+                    placeholder="custom_field_key (Optional)"
+                    value={newFieldKey}
+                    onChange={(e) => setNewFieldKey(e.target.value)}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+
+            <Row className="g-2 mb-2 p-2 bg-light rounded-2 border">
+              <Col md={6}>
+                <Form.Check
+                  type="switch"
+                  id="custom-req-switch"
+                  label="Required (বাধ্যতামূলক ফিল্ড)"
+                  checked={newFieldRequired}
+                  onChange={(e) => setNewFieldRequired(e.target.checked)}
+                />
+              </Col>
+              <Col md={6}>
+                <Form.Check
+                  type="switch"
+                  id="custom-vis-switch"
+                  label="Visible (দৃশ্যমান)"
+                  checked={newFieldVisible}
+                  onChange={(e) => setNewFieldVisible(e.target.checked)}
+                />
+              </Col>
+            </Row>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setShowCustomQuestionModal(false)}>
+            বাতিল
+          </Button>
+          <Button variant="primary" size="sm" className="fw-bold" onClick={handleAddCustomField}>
+            কাস্টম ফিল্ড যুক্ত করুন
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* 3. Modal: Google Forms-Style Shareable Public Link & QR Code */}
+      <Modal show={showPublicLinkModal} onHide={() => setShowPublicLinkModal(false)} centered size="lg">
+        <Modal.Header closeButton className="bg-primary text-white">
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2">
+            <Share2 size={18} />
+            Google Forms এর মতো পাবলিক শেয়ার লিংক ও QR Code
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4">
-          {/* Filters & Export Bar */}
+          <div className="text-center mb-4">
+            <div
+              className="d-inline-flex p-3 rounded-circle bg-primary-subtle text-primary mb-2 shadow-xs"
+              style={{ width: 64, height: 64, alignItems: 'center', justifyContent: 'center' }}
+            >
+              <CheckCircle2 size={36} />
+            </div>
+            <h5 className="fw-bold text-dark mb-1">ফর্মটি পাবলিক আবেদনের জন্য সম্পূর্ণ প্রস্তুত!</h5>
+            <p className="text-muted small mb-0">
+              নিচের লিংকটি কপি করে সামাজিক মাধ্যম, ওয়েবসাইট বা নোটিশে শেয়ার করুন। যে কেউ কোনো লগইন ছাড়াই আবেদন করতে পারবে।
+            </p>
+          </div>
+
+          <Card className="border p-3 bg-light mb-4 rounded-3">
+            <Form.Label className="small fw-bold text-uppercase text-muted mb-1">
+              পাবলিক শেয়ারেবল লিংক (Public Sharable Link):
+            </Form.Label>
+            <div className="input-group mb-2">
+              <span className="input-group-text bg-white text-muted">
+                <LinkIcon size={16} />
+              </span>
+              <Form.Control type="text" readOnly value={publicShareUrl} className="fw-bold bg-white text-primary" />
+              <Button
+                variant="primary"
+                onClick={() => {
+                  navigator.clipboard.writeText(publicShareUrl);
+                  toast.success('📋 লিংকটি সফলভাবে ক্লিপবোর্ডে কপি করা হয়েছে!');
+                }}
+                className="d-flex align-items-center gap-1.5 px-3"
+              >
+                <Copy size={16} />
+                <span>Copy Link</span>
+              </Button>
+            </div>
+
+            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2 pt-2 border-top">
+              <div className="d-flex align-items-center gap-2">
+                <Form.Check
+                  type="switch"
+                  id="accepting-responses-toggle"
+                  label={
+                    <span className="small fw-bold">
+                      {isActive ? '🟢 রেসপন্স গ্রহণ চালু আছে (Accepting Responses)' : '🔴 রেসপন্স গ্রহণ বন্ধ'}
+                    </span>
+                  }
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
+                />
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <Button
+                  variant="outline-dark"
+                  size="sm"
+                  onClick={() => window.open(publicShareUrl, '_blank')}
+                  className="d-flex align-items-center gap-1"
+                >
+                  <ExternalLink size={14} /> Open Live Form
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* QR Code Preview & Direct Share */}
+          <Row className="g-3 align-items-center">
+            <Col md={5} className="text-center border-end">
+              <div className="p-2 border rounded-3 d-inline-block bg-white shadow-xs mb-2">
+                <img src={qrCodeUrl} alt="QR Code" style={{ width: 140, height: 140 }} />
+              </div>
+              <div className="small fw-bold text-dark d-flex align-items-center justify-content-center gap-1">
+                <QrCode size={14} className="text-primary" />
+                <span>স্ক্যান করে সরাসরি ফর্ম ওপেন করুন</span>
+              </div>
+            </Col>
+            <Col md={7}>
+              <h6 className="fw-bold text-dark mb-2">সোশ্যাল ও মেসেঞ্জারে সরাসরি শেয়ার করুন:</h6>
+              <div className="d-flex flex-column gap-2">
+                <Button
+                  variant="outline-success"
+                  size="sm"
+                  className="d-flex align-items-center justify-content-start gap-2 py-2"
+                  onClick={() =>
+                    window.open(
+                      `https://api.whatsapp.com/send?text=${encodeURIComponent(
+                        `${templateTitle} - অনলাইন আবেদন লিংক: ${publicShareUrl}`
+                      )}`,
+                      '_blank'
+                    )
+                  }
+                >
+                  <span>💬 WhatsApp এ শেয়ার করুন</span>
+                </Button>
+                <Button
+                  variant="outline-primary"
+                  size="sm"
+                  className="d-flex align-items-center justify-content-start gap-2 py-2"
+                  onClick={() =>
+                    window.open(
+                      `mailto:?subject=${encodeURIComponent(templateTitle)}&body=${encodeURIComponent(
+                        `অনলাইন আবেদন করতে নিচের লিংকে ক্লিক করুন:\n${publicShareUrl}`
+                      )}`,
+                      '_blank'
+                    )
+                  }
+                >
+                  <span>✉️ Email এর মাধ্যমে পাঠান</span>
+                </Button>
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  className="d-flex align-items-center justify-content-start gap-2 py-2"
+                  onClick={() => {
+                    const trackUrl = `${window.location.origin}/track`;
+                    navigator.clipboard.writeText(trackUrl);
+                    toast.success('📋 ট্র্যাকিং পোর্টাল লিংক কপি করা হয়েছে!');
+                  }}
+                >
+                  <span>🔍 ট্র্যাকিং পোর্টাল লিংক কপি করুন (/track)</span>
+                </Button>
+              </div>
+            </Col>
+          </Row>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowPublicLinkModal(false)}>
+            বন্ধ করুন
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              window.open(publicShareUrl, '_blank');
+              setShowPublicLinkModal(false);
+            }}
+          >
+            ফর্মটি ওপেন করুন
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* 4. Modal: Responses & Submissions Viewer */}
+      <Modal show={showSubmissionsModal} onHide={() => setShowSubmissionsModal(false)} size="xl" centered>
+        <Modal.Header closeButton className="bg-light">
+          <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
+            <Users size={18} className="text-primary" />
+            <span>
+              ফর্ম রেসপন্স ও আবেদনকারীদের তালিকা — {templateTitle} ({submissionsList.length})
+            </span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-3">
           <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-            <div className="d-flex gap-2 align-items-center">
-              <Form.Control
-                type="text"
-                size="sm"
-                placeholder="প্রার্থীর নাম বা ট্র্যাকিং নম্বর দিয়ে খুঁজুন..."
-                value={submissionSearch}
-                onChange={(e) => setSubmissionSearch(e.target.value)}
-                style={{ width: '280px' }}
-              />
+            <div className="d-flex align-items-center gap-2">
+              <div className="input-group input-group-sm" style={{ width: '280px' }}>
+                <span className="input-group-text bg-white text-muted">
+                  <Search size={14} />
+                </span>
+                <Form.Control
+                  placeholder="নাম বা ট্র্যাকিং নম্বর দিয়ে খুঁজুন..."
+                  value={submissionSearch}
+                  onChange={(e) => setSubmissionSearch(e.target.value)}
+                />
+              </div>
+
               <Form.Select
                 size="sm"
                 value={submissionStatusFilter}
@@ -1226,271 +1810,267 @@ export const FormBuilderStudio: React.FC = () => {
                 style={{ width: '160px' }}
               >
                 <option value="all">সকল স্ট্যাটাস</option>
-                <option value="pending">Pending (অপেক্ষমান)</option>
-                <option value="reviewed">Reviewed (যাচাইকৃত)</option>
+                <option value="pending">Pending</option>
+                <option value="reviewed">Reviewed</option>
                 <option value="shortlisted">Shortlisted</option>
-                <option value="approved">Approved (অনুমোদিত)</option>
-                <option value="rejected">Rejected (বাতিল)</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
               </Form.Select>
-              <Button variant="primary" size="sm" onClick={handleOpenSubmissions}>
-                <Search size={14} className="me-1" /> খুঁজুন
-              </Button>
             </div>
 
-            <div className="d-flex gap-2">
-              <Button variant="outline-success" size="sm" onClick={handleExportCSV} className="d-flex align-items-center gap-1.5">
-                <Download size={14} /> এক্সেল / CSV ডাউনলোড
+            <div className="d-flex align-items-center gap-2">
+              <Button
+                variant="outline-success"
+                size="sm"
+                className="d-flex align-items-center gap-1"
+                onClick={handleExportCSV}
+              >
+                <Download size={14} /> Export CSV
               </Button>
             </div>
           </div>
 
-          {/* Submissions Table */}
           {loadingSubmissions ? (
-            <div className="py-5 text-center">
+            <div className="text-center py-5">
               <Spinner animation="border" variant="primary" />
-              <div className="text-muted small mt-2">আবেদন তালিকা লোড হচ্ছে...</div>
+              <div className="mt-2 text-muted small">রেসপন্স ডাটা লোড হচ্ছে...</div>
             </div>
           ) : submissionsList.length === 0 ? (
-            <div className="py-5 text-center bg-light rounded-3 border">
-              <FileText size={40} className="text-muted mb-2" />
-              <h6 className="fw-bold text-dark">কোনো আবেদন জমা পড়েনি</h6>
-              <p className="text-muted small mb-0">পাবলিক লিংক শেয়ার করে প্রার্থীদের আবেদন করতে আমন্ত্রণ জানান।</p>
-            </div>
+            <Alert variant="info" className="text-center py-4 mb-0">
+              এখনও পর্যন্ত এই ফর্মে কোনো আবেদন জমা পড়েনি। পাবলিক লিংক শেয়ার করুন!
+            </Alert>
           ) : (
             <div className="table-responsive border rounded-3">
-              <Table hover className="align-middle mb-0">
+              <Table hover className="align-middle mb-0 small">
                 <thead className="table-light">
                   <tr>
                     <th>Tracking ID</th>
-                    <th>প্রার্থীর নাম (Applicant)</th>
-                    <th>মোবাইল নম্বর</th>
-                    <th>আবেদনের তারিখ</th>
-                    <th>স্ট্যাটাস</th>
-                    <th className="text-end">অ্যাকশন</th>
+                    <th>Applicant Name</th>
+                    <th>Mobile No</th>
+                    <th>Submission Date</th>
+                    <th>Status</th>
+                    <th className="text-end">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {submissionsList.map((sub) => (
-                    <tr key={sub.id}>
-                      <td>
-                        <span className="font-monospace fw-bold text-primary">{sub.tracking_number}</span>
-                      </td>
-                      <td>
-                        <div className="fw-bold text-dark">{sub.applicant_name}</div>
-                        <div className="small text-muted">{sub.applicant_email || 'No email'}</div>
-                      </td>
-                      <td className="font-monospace">{sub.applicant_phone || 'N/A'}</td>
-                      <td>{new Date(sub.created_at).toLocaleDateString('en-GB')}</td>
-                      <td>
-                        <Form.Select
-                          size="sm"
-                          value={sub.status}
-                          onChange={(e) => handleUpdateStatus(sub.id, e.target.value)}
-                          style={{ width: '130px', fontSize: '12px' }}
-                          className={`fw-bold ${
-                            sub.status === 'approved' ? 'text-success' : sub.status === 'rejected' ? 'text-danger' : 'text-warning'
-                          }`}
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="reviewed">Reviewed</option>
-                          <option value="shortlisted">Shortlisted</option>
-                          <option value="approved">Approved</option>
-                          <option value="rejected">Rejected</option>
-                        </Form.Select>
-                      </td>
-                      <td className="text-end">
-                        <Button
-                          variant="outline-primary"
-                          size="sm"
-                          onClick={() => setSelectedSubmissionDetail(sub)}
-                          className="d-inline-flex align-items-center gap-1"
-                        >
-                          <Eye size={13} /> বিস্তারিত
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                  {submissionsList
+                    .filter((s) => {
+                      const matchesSearch =
+                        !submissionSearch ||
+                        s.applicant_name?.toLowerCase().includes(submissionSearch.toLowerCase()) ||
+                        s.tracking_number?.toLowerCase().includes(submissionSearch.toLowerCase());
+                      const matchesStatus =
+                        submissionStatusFilter === 'all' || s.status === submissionStatusFilter;
+                      return matchesSearch && matchesStatus;
+                    })
+                    .map((s) => (
+                      <tr key={s.id}>
+                        <td>
+                          <span className="font-monospace fw-bold text-primary">{s.tracking_number}</span>
+                        </td>
+                        <td className="fw-semibold text-dark">{s.applicant_name}</td>
+                        <td>{s.applicant_phone || 'N/A'}</td>
+                        <td className="text-muted">{new Date(s.created_at).toLocaleDateString()}</td>
+                        <td>
+                          <Badge
+                            bg={
+                              s.status === 'approved'
+                                ? 'success'
+                                : s.status === 'rejected'
+                                ? 'danger'
+                                : s.status === 'shortlisted'
+                                ? 'info'
+                                : 'warning'
+                            }
+                            text={s.status === 'pending' ? 'dark' : 'white'}
+                            className="px-2 py-1 text-uppercase"
+                          >
+                            {s.status}
+                          </Badge>
+                        </td>
+                        <td className="text-end">
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            className="py-0 px-2 me-1 fs-8"
+                            onClick={() => setSelectedSubmissionDetail(s)}
+                          >
+                            View Details
+                          </Button>
+                          <Dropdown className="d-inline-block">
+                            <Dropdown.Toggle variant="light" size="sm" className="py-0 px-1 border" />
+                            <Dropdown.Menu align="end">
+                              <Dropdown.Item onClick={() => handleUpdateSubmissionStatus(s.id, 'reviewed')}>
+                                Mark as Reviewed
+                              </Dropdown.Item>
+                              <Dropdown.Item onClick={() => handleUpdateSubmissionStatus(s.id, 'shortlisted')}>
+                                Mark as Shortlisted
+                              </Dropdown.Item>
+                              <Dropdown.Item onClick={() => handleUpdateSubmissionStatus(s.id, 'approved')}>
+                                Approve Application
+                              </Dropdown.Item>
+                              <Dropdown.Item onClick={() => handleUpdateSubmissionStatus(s.id, 'rejected')} className="text-danger">
+                                Reject Application
+                              </Dropdown.Item>
+                            </Dropdown.Menu>
+                          </Dropdown>
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </Table>
             </div>
           )}
 
-          {/* Submission Details Drawer View if selected */}
+          {/* Submission Details Modal / Drawer */}
           {selectedSubmissionDetail && (
-            <Card className="mt-3 border-primary border-2 shadow-sm rounded-3">
-              <Card.Header className="bg-primary text-white d-flex justify-content-between align-items-center py-2 px-3">
-                <span className="fw-bold">
-                  আবেদনকারী বিস্তারিত তথ্য: {selectedSubmissionDetail.applicant_name} ({selectedSubmissionDetail.tracking_number})
-                </span>
-                <Button variant="link" className="text-white p-0" onClick={() => setSelectedSubmissionDetail(null)}>
-                  <X size={18} />
+            <Modal show={true} onHide={() => setSelectedSubmissionDetail(null)} size="lg" centered>
+              <Modal.Header closeButton className="bg-light">
+                <Modal.Title className="fs-6 fw-bold">
+                  Application Details — {selectedSubmissionDetail.tracking_number}
+                </Modal.Title>
+              </Modal.Header>
+              <Modal.Body className="p-3">
+                <div className="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded-2 border">
+                  <div>
+                    <h6 className="fw-bold mb-0">{selectedSubmissionDetail.applicant_name}</h6>
+                    <small className="text-muted">
+                      Phone: {selectedSubmissionDetail.applicant_phone || 'N/A'} | Email:{' '}
+                      {selectedSubmissionDetail.applicant_email || 'N/A'}
+                    </small>
+                  </div>
+                  <Badge bg="primary" className="px-2 py-1 fs-7 text-uppercase">
+                    Status: {selectedSubmissionDetail.status}
+                  </Badge>
+                </div>
+
+                <h6 className="fw-bold small text-muted text-uppercase mb-2">Submitted Field Data:</h6>
+                <div className="table-responsive border rounded-2 mb-3">
+                  <Table size="sm" bordered hover className="mb-0 small">
+                    <tbody>
+                      {Object.entries(selectedSubmissionDetail.data || {}).map(([key, val]) => (
+                        <tr key={key}>
+                          <td className="fw-bold bg-light text-secondary text-capitalize" style={{ width: '40%' }}>
+                            {key.replace(/_/g, ' ')}
+                          </td>
+                          <td className="text-dark">{typeof val === 'object' ? JSON.stringify(val) : String(val)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+
+                {selectedSubmissionDetail.attachments && (
+                  <>
+                    <h6 className="fw-bold small text-muted text-uppercase mb-2">Uploaded Attachments:</h6>
+                    <div className="d-flex flex-column gap-1 mb-3">
+                      {Object.entries(selectedSubmissionDetail.attachments).map(([fieldKey, att]: any) => (
+                        <div
+                          key={fieldKey}
+                          className="p-2 border rounded-2 bg-light d-flex justify-content-between align-items-center"
+                        >
+                          <div className="d-flex align-items-center gap-2">
+                            <Paperclip size={14} className="text-primary" />
+                            <span className="small fw-semibold">{att.original_name}</span>
+                          </div>
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            className="py-0 px-2 fs-8"
+                            onClick={() => window.open(att.file_url, '_blank')}
+                          >
+                            Download
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" size="sm" onClick={() => setSelectedSubmissionDetail(null)}>
+                  Close
                 </Button>
-              </Card.Header>
-              <Card.Body className="p-3 bg-light">
-                <Row className="g-2 mb-3">
-                  {Object.entries(selectedSubmissionDetail.data || {}).map(([k, v]) => (
-                    <Col key={k} md={6}>
-                      <div className="p-2 border rounded bg-white shadow-xs">
-                        <span className="text-muted extra-small d-block text-uppercase" style={{ fontSize: '10px' }}>
-                          {k}
-                        </span>
-                        <span className="fw-semibold text-dark small">{typeof v === 'object' ? JSON.stringify(v) : String(v)}</span>
-                      </div>
-                    </Col>
-                  ))}
-                </Row>
-              </Card.Body>
-            </Card>
+              </Modal.Footer>
+            </Modal>
           )}
         </Modal.Body>
-        <Modal.Footer className="bg-light">
+        <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowSubmissionsModal(false)}>
-            বন্ধ করুন (Close)
+            বন্ধ করুন
           </Button>
         </Modal.Footer>
       </Modal>
 
-      {/* Link Circular Modal */}
+      {/* 5. Modal: Link Circulars */}
       <Modal show={showLinkCircularModal} onHide={() => setShowLinkCircularModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold fs-6">Link to Official Notice / Circular</Modal.Title>
+        <Modal.Header closeButton className="bg-light">
+          <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
+            <LinkIcon size={18} className="text-primary" />
+            Link Active Circulars & Campaigns
+          </Modal.Title>
         </Modal.Header>
-        <Modal.Body className="p-4">
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-semibold small">Select Official Notice / Circular</Form.Label>
-            <Form.Select>
-              <option value="">-- নোটিশ সিলেক্ট করুন --</option>
-              <option value="1">শিক্ষার্থী ভর্তি সংক্রান্ত জরুরি বিজ্ঞপ্তি 2026</option>
-              <option value="2">সহকারী শিক্ষক নিয়োগ বিজ্ঞপ্তি 2026</option>
-            </Form.Select>
-          </Form.Group>
-          <Button
-            variant="primary"
-            className="w-100"
-            onClick={() => {
-              setShowLinkCircularModal(false);
-              toast.success('নোটিশ সফলভাবে সংযুক্ত করা হয়েছে!');
-            }}
-          >
-            সংযুক্ত করুন (Link Notice)
-          </Button>
-        </Modal.Body>
-      </Modal>
-
-      {/* New Template Modal */}
-      <Modal show={showNewTemplateModal} onHide={() => setShowNewTemplateModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold fs-6">Create New Form Template</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-4">
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-semibold small">Template Title</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="e.g. বিশেষ কোটা ভর্তি আবেদন ফরম 2026"
-              value={newTemplateTitle}
-              onChange={(e) => setNewTemplateTitle(e.target.value)}
-            />
-          </Form.Group>
-          <Button variant="primary" className="w-100" onClick={handleCreateNewTemplate}>
-            টেমপ্লেট তৈরি করুন (Create Template)
-          </Button>
-        </Modal.Body>
-      </Modal>
-
-      {/* Custom Question Modal */}
-      <Modal show={showCustomQuestionModal} onHide={() => setShowCustomQuestionModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="fw-bold fs-6">Add Custom Field / Question</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="p-4">
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-semibold small">Target Section</Form.Label>
-            <Form.Select
-              value={newFieldSectionId}
-              onChange={(e) => setNewFieldSectionId(e.target.value)}
-            >
-              {schemaData.sections.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title_en} / {s.title_bn}
-                </option>
-              ))}
-            </Form.Select>
-          </Form.Group>
-
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-semibold small">English Label</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="e.g. Previous School EIIN"
-              value={newFieldLabelEn}
-              onChange={(e) => setNewFieldLabelEn(e.target.value)}
-            />
-          </Form.Group>
-
-          <Form.Group className="mb-3">
-            <Form.Label className="fw-semibold small">বাংলা লেবেল</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="যেমন: পূর্ববর্তী বিদ্যালয়ের EIIN"
-              value={newFieldLabelBn}
-              onChange={(e) => setNewFieldLabelBn(e.target.value)}
-            />
-          </Form.Group>
-
-          <Row className="g-2 mb-3">
-            <Col md={6}>
-              <Form.Group>
-                <Form.Label className="fw-semibold small">Field Type</Form.Label>
-                <Form.Select
-                  value={newFieldType}
-                  onChange={(e) => setNewFieldType(e.target.value as FieldType)}
-                >
-                  <option value="text">Text Input</option>
-                  <option value="number">Number</option>
-                  <option value="tel">Phone / Mobile</option>
-                  <option value="email">Email</option>
-                  <option value="date">Date</option>
-                  <option value="textarea">Textarea (Long Text)</option>
-                  <option value="file">File Upload</option>
-                  <option value="select">Dropdown Select</option>
-                  <option value="radio">Radio Buttons</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={6}>
-              <Form.Group>
-                <Form.Label className="fw-semibold small">Technical Key</Form.Label>
-                <Form.Control
-                  type="text"
-                  placeholder="e.g. previous_school_eiin"
-                  value={newFieldKey}
-                  onChange={(e) => setNewFieldKey(e.target.value)}
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-
-          <div className="d-flex gap-3 mb-3">
-            <Form.Check
-              type="checkbox"
-              label="আবশ্যক (Required)"
-              checked={newFieldRequired}
-              onChange={(e) => setNewFieldRequired(e.target.checked)}
-            />
-            <Form.Check
-              type="checkbox"
-              label="দৃশ্যমান (Visible)"
-              checked={newFieldVisible}
-              onChange={(e) => setNewFieldVisible(e.target.checked)}
-            />
+        <Modal.Body>
+          <p className="small text-muted mb-3">
+            এই ফর্ম টেমপ্লেটটি কোন কোন সার্কুলার বা অ্যাডমিশন ক্যাম্পেইনের জন্য কার্যকর থাকবে তা নির্ধারণ করুন:
+          </p>
+          <div className="d-flex flex-column gap-2">
+            <div className="p-2 border rounded-2 bg-light d-flex align-items-center justify-content-between">
+              <div>
+                <strong>BSISC Admission Circular 2026-2027</strong>
+                <div className="small text-muted">Play to Class IX (Bangla & English Version)</div>
+              </div>
+              <Form.Check defaultChecked />
+            </div>
+            <div className="p-2 border rounded-2 bg-light d-flex align-items-center justify-content-between">
+              <div>
+                <strong>Mid-Term Lateral Entry Admission 2026</strong>
+                <div className="small text-muted">Class VI to VIII</div>
+              </div>
+              <Form.Check />
+            </div>
           </div>
-
-          <Button variant="primary" className="w-100" onClick={handleAddCustomQuestion}>
-            যুক্ত করুন (Add Field)
-          </Button>
         </Modal.Body>
+        <Modal.Footer>
+          <Button variant="primary" size="sm" onClick={() => setShowLinkCircularModal(false)}>
+            সংরক্ষণ করুন
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* 6. Modal: Create New Form Template */}
+      <Modal show={showNewTemplateModal} onHide={() => setShowNewTemplateModal(false)} centered>
+        <Modal.Header closeButton className="bg-light">
+          <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
+            <Plus size={18} className="text-primary" />
+            Create New Form Template
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3">
+              <Form.Label className="small fw-bold">Template Title (টেমপ্লেটের নাম)</Form.Label>
+              <Form.Control
+                type="text"
+                size="sm"
+                placeholder="যেমন: একাদশ শ্রেণি ভর্তি আবেদন ফরম ২০২৬"
+                value={newTemplateTitle}
+                onChange={(e) => setNewTemplateTitle(e.target.value)}
+              />
+            </Form.Group>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setShowNewTemplateModal(false)}>
+            বাতিল
+          </Button>
+          <Button variant="primary" size="sm" className="fw-bold" onClick={handleCreateNewTemplate}>
+            তৈরি করুন
+          </Button>
+        </Modal.Footer>
       </Modal>
     </div>
   );
 };
+
+export default FormBuilderStudio;

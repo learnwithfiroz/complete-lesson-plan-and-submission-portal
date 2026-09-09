@@ -1,4 +1,4 @@
-export type FormType = 'admission' | 'job' | 'tender';
+export type FormType = 'admission' | 'job' | 'tender' | 'custom';
 
 export type FieldType =
   | 'text'

@@ -109,9 +109,30 @@ class PublicFormController extends Controller
         }
 
         // Extract applicant core details from common field keys
-        $name = $formData['student_name_en'] ?? $formData['student_name_bn'] ?? $formData['candidate_name'] ?? $formData['full_name'] ?? $formData['name'] ?? 'Applicant';
-        $email = $formData['student_email'] ?? $formData['guardian_email'] ?? $formData['email'] ?? null;
-        $phone = $formData['guardian_phone'] ?? $formData['student_phone'] ?? $formData['mobile'] ?? $formData['phone'] ?? null;
+        $name = $formData['applicant_full_name'] 
+            ?? $formData['applicant_name'] 
+            ?? $formData['student_name_en'] 
+            ?? $formData['student_name_bn'] 
+            ?? $formData['candidate_name'] 
+            ?? $formData['full_name'] 
+            ?? $formData['name'] 
+            ?? 'Applicant';
+
+        $email = $formData['contact_email'] 
+            ?? $formData['applicant_email'] 
+            ?? $formData['student_email'] 
+            ?? $formData['guardian_email'] 
+            ?? $formData['email'] 
+            ?? null;
+
+        $phone = $formData['contact_mobile'] 
+            ?? $formData['applicant_phone'] 
+            ?? $formData['guardian_mobile'] 
+            ?? $formData['guardian_phone'] 
+            ?? $formData['student_phone'] 
+            ?? $formData['mobile'] 
+            ?? $formData['phone'] 
+            ?? null;
 
         // Generate unique tracking reference number
         $trackingNumber = FormSubmission::generateTrackingNumber($schema->form_type);

@@ -116,4 +116,11 @@ export const formSubmissionsApi = {
     );
     return response.data;
   },
+
+  updateSubmissionStatus: async (
+    submissionId: number,
+    data: { status: string; admin_notes?: string }
+  ): Promise<ApiResponse<FormSubmissionRecord>> => {
+    return formSubmissionsApi.updateStatus(submissionId, data);
+  },
 };

@@ -44,6 +44,7 @@ class FormSubmission extends Model
             'admission' => 'ADM',
             'job' => 'JOB',
             'tender' => 'TDR',
+            'custom' => 'CUS',
         ];
         $prefix = $prefixMap[strtolower($formType)] ?? strtoupper(substr($formType, 0, 3));
         

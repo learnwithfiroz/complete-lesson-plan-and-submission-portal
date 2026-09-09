@@ -76,7 +76,7 @@ class FormSchemaController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'form_type' => 'required|in:admission,job,tender',
+            'form_type' => 'required|string|max:50',
             'title' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255',
             'description' => 'nullable|string',
@@ -143,7 +143,7 @@ class FormSchemaController extends Controller
     public function update(Request $request, FormSchema $formSchema): JsonResponse
     {
         $validated = $request->validate([
-            'form_type' => 'sometimes|required|in:admission,job,tender',
+            'form_type' => 'sometimes|required|string|max:50',
             'title' => 'sometimes|required|string|max:255',
             'slug' => 'nullable|string|max:255',
             'description' => 'nullable|string',
