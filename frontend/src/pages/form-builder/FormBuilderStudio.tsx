@@ -29,7 +29,6 @@ import {
   Smartphone,
   Monitor,
   Link as LinkIcon,
-  HelpCircle,
   Shield,
   User,
   Users,
@@ -46,14 +45,29 @@ import {
   Download,
   Search,
   Sparkles,
-  FolderPlus
+  FolderPlus,
+  Bot,
+  BookOpen,
+  Code,
+  Upload,
+  Settings,
+  Camera,
+  PenTool,
+  Hash,
+  Phone,
+  Mail,
+  Calendar
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { formSchemasApi } from '../../api/formSchemas';
 import { formSubmissionsApi, type FormSubmissionRecord } from '../../api/formSubmissions';
 import type { FormSchema, FormSchemaData, FormField, FormSection, FormType, FieldType } from '../../types/formBuilder';
 import { defaultAdmissionSchemaData } from '../../data/defaultAdmissionSchema';
+import { defaultJobSchemaData } from '../../data/defaultJobSchema';
+import { defaultTenderSchemaData } from '../../data/defaultTenderSchema';
 import { defaultCustomSchemaData } from '../../data/defaultCustomSchema';
+import { formTemplatesLibrary, type FormTemplatePreset } from '../../data/formTemplatesLibrary';
+import { generateFormSchemaWithAI } from '../../utils/aiFormGenerator';
 
 export const FormBuilderStudio: React.FC = () => {
   const { type } = useParams<{ type?: string }>();
@@ -86,6 +100,17 @@ export const FormBuilderStudio: React.FC = () => {
   const [showNewTemplateModal, setShowNewTemplateModal] = useState<boolean>(false);
   const [showPublicLinkModal, setShowPublicLinkModal] = useState<boolean>(false);
   const [showSubmissionsModal, setShowSubmissionsModal] = useState<boolean>(false);
+  const [showAiModal, setShowAiModal] = useState<boolean>(false);
+  const [showTemplatesLibraryModal, setShowTemplatesLibraryModal] = useState<boolean>(false);
+  const [showEmbedModal, setShowEmbedModal] = useState<boolean>(false);
+  const [showJsonModal, setShowJsonModal] = useState<boolean>(false);
+
+  // AI Generator state
+  const [aiPrompt, setAiPrompt] = useState<string>('');
+  const [isAiGenerating, setIsAiGenerating] = useState<boolean>(false);
+
+  // JSON Import/Export state
+  const [jsonContent, setJsonContent] = useState<string>('');
 
   // Submissions state
   const [submissionsList, setSubmissionsList] = useState<FormSubmissionRecord[]>([]);
@@ -127,10 +152,17 @@ export const FormBuilderStudio: React.FC = () => {
   }, [formType]);
 
   const getDefaultDataForType = (selectedType: FormType): FormSchemaData => {
-    if (selectedType === 'custom') {
-      return defaultCustomSchemaData;
+    switch (selectedType) {
+      case 'job':
+        return defaultJobSchemaData;
+      case 'tender':
+        return defaultTenderSchemaData;
+      case 'custom':
+        return defaultCustomSchemaData;
+      case 'admission':
+      default:
+        return defaultAdmissionSchemaData;
     }
-    return defaultAdmissionSchemaData;
   };
 
   const loadSchemas = async (selectedType: FormType) => {
@@ -146,11 +178,15 @@ export const FormBuilderStudio: React.FC = () => {
         setIsActive(defaultOrFirst.is_active ?? true);
         setSubmissionCount(defaultOrFirst.submission_count || (defaultOrFirst as any).submissions_count || 0);
 
-        if (defaultOrFirst.schema_data && defaultOrFirst.schema_data.sections) {
+        if (defaultOrFirst.schema_data && defaultOrFirst.schema_data.sections && defaultOrFirst.schema_data.sections.length > 0) {
           setSchemaData(defaultOrFirst.schema_data);
           setTemplateTitle(defaultOrFirst.title || defaultOrFirst.schema_data.title);
           setPostPaymentDoc(defaultOrFirst.schema_data.post_payment_document || 'Application Voucher (কাগজী পেসে প্রবেশপত্র)');
           setLayoutStyle(defaultOrFirst.schema_data.layout_style || 'wizard');
+        } else {
+          const fallbackData = getDefaultDataForType(selectedType);
+          setSchemaData(fallbackData);
+          setTemplateTitle(fallbackData.title);
         }
       } else {
         setCurrentSchemaId(null);
@@ -270,6 +306,77 @@ export const FormBuilderStudio: React.FC = () => {
     }
   };
 
+  // AI Form Generator Trigger
+  const handleGenerateWithAI = () => {
+    if (!aiPrompt.trim()) {
+      toast.warning('অনুগ্রহ করে ফরমের বিবরণ বা প্রম্পট লিখুন।');
+      return;
+    }
+    setIsAiGenerating(true);
+    setTimeout(() => {
+      try {
+        const generated = generateFormSchemaWithAI(aiPrompt);
+        setSchemaData(generated);
+        setTemplateTitle(generated.title);
+        setPostPaymentDoc(generated.post_payment_document);
+        setLayoutStyle(generated.layout_style);
+        setFormType('custom');
+        setCurrentSchemaId(null);
+        setShowAiModal(false);
+        setAiPrompt('');
+        toast.success('🤖 AI সফলভাবে সম্পূর্ণ ফরম স্কিমা জেনারেট করেছে!');
+      } catch (err) {
+        toast.error('AI ফরম তৈরিতে সমস্যা হয়েছে।');
+      } finally {
+        setIsAiGenerating(false);
+      }
+    }, 600);
+  };
+
+  // Apply Pre-built Template Preset
+  const handleApplyPresetTemplate = (preset: FormTemplatePreset) => {
+    setSchemaData(preset.schemaData);
+    setTemplateTitle(preset.schemaData.title);
+    setPostPaymentDoc(preset.schemaData.post_payment_document);
+    setLayoutStyle(preset.schemaData.layout_style);
+    setCurrentSchemaId(null);
+    setShowTemplatesLibraryModal(false);
+    toast.success(`🎉 '${preset.title_bn}' টেমপ্লেট সফলভাবে লোড হয়েছে!`);
+  };
+
+  // Quick Add Standard Field
+  const handleQuickAddField = (fieldType: FieldType, labelEn: string, labelBn: string, iconCategory = 'GENERAL', col = 6, options?: any[]) => {
+    const targetSection = activeSectionId !== 'all' ? activeSectionId : schemaData.sections[0]?.id;
+    if (!targetSection) {
+      toast.error('অনুগ্রহ করে প্রথমে একটি সেকশন তৈরি করুন।');
+      return;
+    }
+
+    const key = `f_${fieldType}_${Date.now()}`;
+    const newField: FormField = {
+      id: key,
+      field_key: key,
+      key: key,
+      label_en: labelEn,
+      label_bn: labelBn,
+      type: fieldType,
+      options: options,
+      required: true,
+      visible: true,
+      grid_col: col,
+      col_width: col,
+      category: iconCategory,
+      category_tag: iconCategory,
+    };
+
+    setSchemaData((prev) => ({
+      ...prev,
+      sections: prev.sections.map((sec) => (sec.id === targetSection ? { ...sec, fields: [...sec.fields, newField] } : sec)),
+    }));
+
+    toast.success(`'${labelBn}' ফিল্ডটি দ্রুত যুক্ত করা হয়েছে!`);
+  };
+
   // Open Responses Viewer
   const handleOpenSubmissions = async () => {
     if (!currentSchemaId) {
@@ -331,6 +438,38 @@ export const FormBuilderStudio: React.FC = () => {
     toast.success('CSV ডাউনলোড শুরু হয়েছে!');
   };
 
+  // JSON Import & Export
+  const handleExportJson = () => {
+    const exportObj = {
+      title: templateTitle,
+      form_type: formType,
+      post_payment_document: postPaymentDoc,
+      layout_style: layoutStyle,
+      schema_data: schemaData,
+      exported_at: new Date().toISOString(),
+    };
+    setJsonContent(JSON.stringify(exportObj, null, 2));
+    setShowJsonModal(true);
+  };
+
+  const handleImportJson = () => {
+    try {
+      const parsed = JSON.parse(jsonContent);
+      if (!parsed.schema_data || !parsed.schema_data.sections) {
+        toast.error('অবৈধ JSON স্কিমা ফাইল।');
+        return;
+      }
+      setSchemaData(parsed.schema_data);
+      if (parsed.title) setTemplateTitle(parsed.title);
+      if (parsed.post_payment_document) setPostPaymentDoc(parsed.post_payment_document);
+      if (parsed.layout_style) setLayoutStyle(parsed.layout_style);
+      setShowJsonModal(false);
+      toast.success('JSON স্কিমা সফলভাবে ইমপোর্ট হয়েছে!');
+    } catch (err) {
+      toast.error('JSON পার্স করতে সমস্যা হয়েছে। ফরম্যাট সঠিক রাখুন।');
+    }
+  };
+
   // Field manipulation handlers
   const handleToggleRequired = (sectionId: string, fieldId: string) => {
     setSchemaData((prev) => {
@@ -390,6 +529,19 @@ export const FormBuilderStudio: React.FC = () => {
       });
       return { ...prev, sections: newSections };
     });
+  };
+
+  const handleUpdateFieldColWidth = (sectionId: string, fieldId: string, colWidth: number) => {
+    setSchemaData((prev) => ({
+      ...prev,
+      sections: prev.sections.map((sec) => {
+        if (sec.id !== sectionId) return sec;
+        return {
+          ...sec,
+          fields: sec.fields.map((f) => (f.id === fieldId ? { ...f, col_width: colWidth, grid_col: colWidth } : f)),
+        };
+      }),
+    }));
   };
 
   const handleDeleteField = (sectionId: string, fieldId: string) => {
@@ -538,9 +690,10 @@ export const FormBuilderStudio: React.FC = () => {
     toast.success('নতুন টেমপ্লেট ড্রাফট তৈরি করা হয়েছে!');
   };
 
-  // Compute public full URL
+  // Compute public full URL & Embed code
   const publicShareUrl = `${window.location.origin}/forms/${schemaSlug || formType}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(publicShareUrl)}`;
+  const embedIframeCode = `<iframe src="${publicShareUrl}" width="100%" height="800px" frameborder="0" style="border:0; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.1);" allowfullscreen></iframe>`;
 
   // Filter sections based on activeSectionId
   const displayedSections =
@@ -556,6 +709,7 @@ export const FormBuilderStudio: React.FC = () => {
     switch (iconName) {
       case 'User':
       case 'student_identity':
+      case 'applicant_info':
         return <User size={15} className="me-1 text-primary" />;
       case 'Users':
       case 'parents_details':
@@ -571,11 +725,16 @@ export const FormBuilderStudio: React.FC = () => {
         return <UserCheck size={15} className="me-1 text-info" />;
       case 'Paperclip':
       case 'documents_upload':
+      case 'document_uploads':
+      case 'tender_documents_upload':
       case 'attachments_docs':
         return <Paperclip size={15} className="me-1 text-secondary" />;
       case 'Briefcase':
+      case 'teaching_experience':
+      case 'bidder_company_details':
         return <Briefcase size={15} className="me-1 text-info" />;
       case 'Layers':
+      case 'tender_package_info':
         return <Layers size={15} className="me-1 text-dark" />;
       case 'Sparkles':
         return <Sparkles size={15} className="me-1 text-warning" />;
@@ -586,7 +745,7 @@ export const FormBuilderStudio: React.FC = () => {
 
   return (
     <div className="container-fluid px-3 py-3" style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
-      {/* Top Main Header */}
+      {/* 1. Top Main Header & Mode Switcher */}
       <div className="bg-white rounded-3 shadow-sm p-3 mb-3 border">
         <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
           <div className="d-flex align-items-center gap-3">
@@ -602,9 +761,12 @@ export const FormBuilderStudio: React.FC = () => {
                 <Badge bg="warning" text="dark" className="fw-bold px-2 py-1 fs-8 text-uppercase">
                   PRO
                 </Badge>
+                <Badge bg="info" text="dark" className="fw-bold px-2 py-1 fs-8">
+                  AI Powered
+                </Badge>
               </div>
               <small className="text-muted">
-                Configure mandatory fields, create custom forms, instructions & share Google Forms-style links
+                Build high-converting admission, recruitment, tender, and custom forms with AI & Google Forms-style shareable links
               </small>
             </div>
           </div>
@@ -666,6 +828,29 @@ export const FormBuilderStudio: React.FC = () => {
               </Button>
             </div>
 
+            {/* AI Assistant Button */}
+            <Button
+              variant="outline-dark"
+              className="d-flex align-items-center gap-1.5 fw-bold px-3 py-2 shadow-xs rounded-3 border-dark-subtle"
+              style={{ background: 'linear-gradient(135deg, #f3e8ff, #e0e7ff)', color: '#6b21a8' }}
+              onClick={() => setShowAiModal(true)}
+              title="AI দিয়ে ১ ক্লিকে সম্পূর্ণ নতুন ফর্ম তৈরি করুন"
+            >
+              <Bot size={16} className="text-purple" />
+              <span>🤖 AI Generator</span>
+            </Button>
+
+            {/* Template Library Button */}
+            <Button
+              variant="outline-secondary"
+              className="d-flex align-items-center gap-1.5 fw-bold px-3 py-2 shadow-xs rounded-3"
+              onClick={() => setShowTemplatesLibraryModal(true)}
+              title="রেডিমেড টেমপ্লেট লাইব্রেরি ব্রাউজ করুন"
+            >
+              <BookOpen size={16} />
+              <span>Templates</span>
+            </Button>
+
             {/* Public Link Button */}
             <Button
               variant="outline-primary"
@@ -674,7 +859,7 @@ export const FormBuilderStudio: React.FC = () => {
               title="Google Forms এর মতো পাবলিক লিংক দেখুন ও কপি করুন"
             >
               <LinkIcon size={16} className="text-primary" />
-              <span>Public Link (শেয়ার লিংক)</span>
+              <span>Public Link</span>
             </Button>
 
             {/* Submissions / Responses Button */}
@@ -708,7 +893,7 @@ export const FormBuilderStudio: React.FC = () => {
         </div>
       </div>
 
-      {/* Saved Templates & Action Toolbar */}
+      {/* 2. Saved Templates Toolbar & Action Palette */}
       <div className="bg-white rounded-3 shadow-sm p-3 mb-3 border">
         <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
           <div className="d-flex flex-wrap align-items-center gap-2">
@@ -717,7 +902,7 @@ export const FormBuilderStudio: React.FC = () => {
               size="sm"
               value={currentSchemaId || ''}
               onChange={(e) => handleSelectTemplate(e.target.value)}
-              style={{ width: '380px', fontWeight: 600 }}
+              style={{ width: '360px', fontWeight: 600 }}
               className="bg-light border-secondary-subtle"
             >
               {schemasList.map((s) => (
@@ -770,14 +955,34 @@ export const FormBuilderStudio: React.FC = () => {
               <Plus size={14} /> Custom Question
             </Button>
             <Button
+              variant="outline-info"
+              size="sm"
+              className="d-flex align-items-center gap-1 rounded-2 text-dark"
+              onClick={() => setShowEmbedModal(true)}
+              title="ওয়েবসাইটে এম্বেড কোড পান"
+            >
+              <Code size={14} /> Embed Code
+            </Button>
+            <Button
+              variant="outline-secondary"
+              size="sm"
+              className="d-flex align-items-center gap-1 rounded-2"
+              onClick={handleExportJson}
+              title="JSON স্কিমা এক্সপোর্ট ও ব্যাকআপ"
+            >
+              <Download size={14} /> Export JSON
+            </Button>
+            <Button
               variant="outline-secondary"
               size="sm"
               className="d-flex align-items-center gap-1 rounded-2"
               onClick={() => {
-                toast.success('স্কুল ডাটা ডিকশনারি ও অটোমেটিক ফিল্ড সিঙ্ক সম্পন্ন হয়েছে!');
+                setJsonContent('');
+                setShowJsonModal(true);
               }}
+              title="JSON স্কিমা ইমপোর্ট করুন"
             >
-              <HelpCircle size={14} /> Sync Dictionary
+              <Upload size={14} /> Import JSON
             </Button>
             <Button
               variant="primary"
@@ -809,7 +1014,113 @@ export const FormBuilderStudio: React.FC = () => {
         </div>
       </div>
 
-      {/* Template Metadata & Layout Options */}
+      {/* 3. Quick Visual Field Palette (1-Click Add Standard Fields) */}
+      <div className="bg-white rounded-3 shadow-sm p-2 mb-3 border">
+        <div className="d-flex align-items-center justify-content-between mb-1.5 px-2">
+          <small className="fw-bold text-dark d-flex align-items-center gap-1" style={{ fontSize: '11.5px' }}>
+            <Sparkles size={14} className="text-warning" />
+            <span>QUICK FIELD PALETTE (১-ক্লিকে কমন ফিল্ড যোগ করুন):</span>
+          </small>
+          <small className="text-muted" style={{ fontSize: '11px' }}>
+            ক্লিক করলেই বর্তমান সেকশনে স্বয়ংক্রিয়ভাবে ফিল্ডটি তৈরি হবে
+          </small>
+        </div>
+        <div className="d-flex flex-wrap gap-1.5 px-1 align-items-center">
+          <Button
+            variant="light"
+            size="sm"
+            className="border py-1 px-2 d-flex align-items-center gap-1 fs-8"
+            onClick={() => handleQuickAddField('text', 'Full Name (English / Bangla)', 'পূর্ণ নাম (ইংরেজি / বাংলায়)', 'USER_INFO', 6)}
+          >
+            <User size={13} className="text-primary" /> Name
+          </Button>
+          <Button
+            variant="light"
+            size="sm"
+            className="border py-1 px-2 d-flex align-items-center gap-1 fs-8"
+            onClick={() => handleQuickAddField('tel', 'Contact Mobile No', 'সক্রিয় মোবাইল নম্বর', 'CONTACT_INFO', 6)}
+          >
+            <Phone size={13} className="text-success" /> Mobile No
+          </Button>
+          <Button
+            variant="light"
+            size="sm"
+            className="border py-1 px-2 d-flex align-items-center gap-1 fs-8"
+            onClick={() => handleQuickAddField('email', 'Email Address', 'ইমেইল ঠিকানা', 'CONTACT_INFO', 6)}
+          >
+            <Mail size={13} className="text-info" /> Email
+          </Button>
+          <Button
+            variant="light"
+            size="sm"
+            className="border py-1 px-2 d-flex align-items-center gap-1 fs-8"
+            onClick={() => handleQuickAddField('date', 'Date of Birth', 'জন্ম তারিখ', 'BIO_INFO', 4)}
+          >
+            <Calendar size={13} className="text-danger" /> Birth Date
+          </Button>
+          <Button
+            variant="light"
+            size="sm"
+            className="border py-1 px-2 d-flex align-items-center gap-1 fs-8"
+            onClick={() => handleQuickAddField('text', 'National ID (NID) / Birth Cert No', 'জাতীয় পরিচয়পত্র / জন্ম নিবন্ধন নম্বর', 'BIO_INFO', 4)}
+          >
+            <Shield size={13} className="text-warning" /> NID / Birth Cert
+          </Button>
+          <Button
+            variant="light"
+            size="sm"
+            className="border py-1 px-2 d-flex align-items-center gap-1 fs-8"
+            onClick={() =>
+              handleQuickAddField('select', 'Blood Group', 'রক্তের গ্রুপ', 'BIO_INFO', 4, [
+                { label_en: 'A+', label_bn: 'এ+', value: 'A+' },
+                { label_en: 'A-', label_bn: 'এ-', value: 'A-' },
+                { label_en: 'B+', label_bn: 'বি+', value: 'B+' },
+                { label_en: 'B-', label_bn: 'বি-', value: 'B-' },
+                { label_en: 'O+', label_bn: 'ও+', value: 'O+' },
+                { label_en: 'O-', label_bn: 'ও-', value: 'O-' },
+                { label_en: 'AB+', label_bn: 'এবি+', value: 'AB+' },
+                { label_en: 'AB-', label_bn: 'এবি-', value: 'AB-' },
+              ])
+            }
+          >
+            <Hash size={13} className="text-danger" /> Blood Group
+          </Button>
+          <Button
+            variant="light"
+            size="sm"
+            className="border py-1 px-2 d-flex align-items-center gap-1 fs-8"
+            onClick={() => handleQuickAddField('textarea', 'Present / Permanent Address', 'বর্তমান ও স্থায়ী ঠিকানা', 'ADDRESS_INFO', 12)}
+          >
+            <MapPin size={13} className="text-primary" /> Full Address
+          </Button>
+          <Button
+            variant="light"
+            size="sm"
+            className="border py-1 px-2 d-flex align-items-center gap-1 fs-8"
+            onClick={() => handleQuickAddField('file', 'Passport Size Photo (JPG/PNG)', 'পাসপোর্ট সাইজের রঙিন ছবি', 'DOCS', 6)}
+          >
+            <Camera size={13} className="text-success" /> Photo Upload
+          </Button>
+          <Button
+            variant="light"
+            size="sm"
+            className="border py-1 px-2 d-flex align-items-center gap-1 fs-8"
+            onClick={() => handleQuickAddField('file', 'Scanned Signature (JPG/PNG)', 'প্রার্থীর স্বাক্ষরের স্ক্যান কপি', 'DOCS', 6)}
+          >
+            <PenTool size={13} className="text-secondary" /> Signature
+          </Button>
+          <Button
+            variant="light"
+            size="sm"
+            className="border py-1 px-2 d-flex align-items-center gap-1 fs-8"
+            onClick={() => handleQuickAddField('file', 'Supporting Certificates / PDF Documents', 'প্রয়োজনীয় কাগজপত্র ও সনদ (PDF)', 'DOCS', 12)}
+          >
+            <Paperclip size={13} className="text-purple" /> PDF Attachment
+          </Button>
+        </div>
+      </div>
+
+      {/* 4. Template Metadata & Layout Options */}
       <div className="bg-white rounded-3 shadow-sm p-3 mb-3 border">
         <Row className="g-3 align-items-center">
           <Col md={5}>
@@ -847,6 +1158,9 @@ export const FormBuilderStudio: React.FC = () => {
                 <option value="Payment Acknowledgment Slip">
                   🧾 Payment Acknowledgment Slip
                 </option>
+                <option value="Club Membership Token & Registration Slip">
+                  🏆 Club / Service Registration Token
+                </option>
               </Form.Select>
             </Form.Group>
           </Col>
@@ -870,7 +1184,7 @@ export const FormBuilderStudio: React.FC = () => {
         </Row>
       </div>
 
-      {/* Section Navigation Tabs & Manager */}
+      {/* 5. Section Navigation Tabs & Manager */}
       <div className="bg-white rounded-3 shadow-sm p-2 mb-3 border">
         <div className="d-flex align-items-center justify-content-between mb-2 px-2">
           <small className="text-muted d-flex align-items-center gap-1" style={{ fontSize: '11px' }}>
@@ -919,7 +1233,7 @@ export const FormBuilderStudio: React.FC = () => {
         </div>
       </div>
 
-      {/* Split Workspace: Schema Builder (Left) & Live Preview (Right) */}
+      {/* 6. Split Workspace: Schema Builder (Left) & Live Preview (Right) */}
       <Row className="g-3">
         {/* Left Column: Schema Field Configuration Editor */}
         <Col lg={7} xl={7}>
@@ -1055,6 +1369,21 @@ export const FormBuilderStudio: React.FC = () => {
                                 </div>
 
                                 <div className="d-flex align-items-center gap-1">
+                                  {/* Column Width Selector */}
+                                  <Form.Select
+                                    size="sm"
+                                    className="py-0 px-1 border fs-8"
+                                    style={{ width: '85px' }}
+                                    value={field.col_width || field.grid_col || 6}
+                                    onChange={(e) => handleUpdateFieldColWidth(sec.id, field.id, Number(e.target.value))}
+                                    title="গ্রিড কলামের প্রস্থ (Half Width বা Full Width)"
+                                  >
+                                    <option value={6}>50% (Col-6)</option>
+                                    <option value={12}>100% (Col-12)</option>
+                                    <option value={4}>33% (Col-4)</option>
+                                    <option value={3}>25% (Col-3)</option>
+                                  </Form.Select>
+
                                   <Button
                                     variant={field.required ? 'danger' : 'outline-secondary'}
                                     size="sm"
@@ -1130,6 +1459,18 @@ export const FormBuilderStudio: React.FC = () => {
                                   </Col>
                                 )}
                               </Row>
+
+                              {/* Options List Preview for Choice Fields */}
+                              {field.options && field.options.length > 0 && (
+                                <div className="mt-1.5 pt-1 border-top d-flex align-items-center gap-1 flex-wrap">
+                                  <span className="text-muted fs-8">Options:</span>
+                                  {field.options.map((opt: any, idx: number) => (
+                                    <Badge key={idx} bg="light" text="dark" className="border fs-8">
+                                      {typeof opt === 'string' ? opt : opt.label_bn || opt.label_en}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
                             </Card.Body>
                           </Card>
                         );
@@ -1415,7 +1756,202 @@ export const FormBuilderStudio: React.FC = () => {
         </Col>
       </Row>
 
-      {/* 1. Modal: Add New Section */}
+      {/* 1. Modal: AI Form Generator */}
+      <Modal show={showAiModal} onHide={() => setShowAiModal(false)} centered size="lg">
+        <Modal.Header closeButton className="text-white" style={{ background: 'linear-gradient(135deg, #6b21a8, #4f46e5)' }}>
+          <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2">
+            <Bot size={20} />
+            <span>AI Smart Form Studio Generator (কৃত্রিম বুদ্ধিমত্তা ফর্ম জেনারেটর)</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          <div className="mb-3">
+            <h6 className="fw-bold text-dark">আপনি কোন ধরনের আবেদন বা নিবন্ধন ফর্ম তৈরি করতে চান?</h6>
+            <p className="text-muted small">
+              বাংলা বা ইংরেজিতে আপনার প্রয়োজনীয়তা লিখুন। AI স্বয়ংক্রিয়ভাবে প্রয়োজনীয় সকল সেকশন, প্রশ্ন, অপশন, ড্রপডাউন এবং ভ্যালিডেশন রুলস সহ ফরম তৈরি করে দেবে।
+            </p>
+          </div>
+
+          <Form.Group className="mb-3">
+            <Form.Label className="small fw-bold text-dark">আপনার প্রম্পট বা নির্দেশিকা লিখুন:</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              placeholder="যেমন: 'বিজ্ঞান বিভাগের রোবটিক্স অলিম্পিয়াড রেজিস্ট্রেশন ফর্ম', 'স্কুল বাস সার্ভিস আবেদন ফরম', 'শিক্ষক নিয়োগের জন্য অভিজ্ঞতা ও প্রকাশনাসহ ফরম', 'ক্লাস ১১ সাইন্স অ্যাডমিশন'..."
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              className="border-primary shadow-xs"
+            />
+          </Form.Group>
+
+          <div className="mb-3">
+            <small className="fw-bold text-muted d-block mb-1.5">💡 জনপ্রিয় নমুনা আইডিয়া (১-ক্লিকে ব্যবহার করুন):</small>
+            <div className="d-flex flex-wrap gap-1.5">
+              <Button
+                variant="light"
+                size="sm"
+                className="border fs-8 text-primary"
+                onClick={() => setAiPrompt('বার্ষিক বিজ্ঞান মেলা ও প্রজেক্ট প্রদর্শনী ২০২৬')}
+              >
+                🔬 বিজ্ঞান মেলা ও ইনোভেশন
+              </Button>
+              <Button
+                variant="light"
+                size="sm"
+                className="border fs-8 text-success"
+                onClick={() => setAiPrompt('মেধাবৃত্তি ও টিউশন ফি মওকুফ আবেদন ফরম')}
+              >
+                🎓 স্কলারশিপ ও আর্থিক সহায়তা
+              </Button>
+              <Button
+                variant="light"
+                size="sm"
+                className="border fs-8 text-danger"
+                onClick={() => setAiPrompt('স্কুল বাস ও পরিবহন সেবা নিবন্ধন ফরম')}
+              >
+                🚌 স্কুল বাস পরিবহন রুট
+              </Button>
+              <Button
+                variant="light"
+                size="sm"
+                className="border fs-8 text-dark"
+                onClick={() => setAiPrompt('ছাড়পত্র ও প্রশংসাপত্র (TC & Testimonial) আবেদন ফরম')}
+              >
+                📜 ছাড়পত্র ও প্রশংসাপত্র (TC)
+              </Button>
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" size="sm" onClick={() => setShowAiModal(false)}>
+            বাতিল
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            className="fw-bold px-4 d-flex align-items-center gap-1.5"
+            style={{ backgroundColor: '#6b21a8', borderColor: '#6b21a8' }}
+            onClick={handleGenerateWithAI}
+            disabled={isAiGenerating}
+          >
+            <Sparkles size={16} />
+            <span>{isAiGenerating ? 'AI জেনারেট করছে...' : 'Generate Form with AI'}</span>
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* 2. Modal: Pre-built Form Templates Library */}
+      <Modal show={showTemplatesLibraryModal} onHide={() => setShowTemplatesLibraryModal(false)} centered size="xl">
+        <Modal.Header closeButton className="bg-light">
+          <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
+            <BookOpen size={18} className="text-primary" />
+            <span>Pre-built Institutional Form Templates Library (রেডিমেড টেমপ্লেট লাইব্রেরি)</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-3">
+          <Row className="g-3">
+            {formTemplatesLibrary.map((preset) => (
+              <Col md={6} lg={4} key={preset.id}>
+                <Card className="h-100 border shadow-xs hover-shadow transition-all">
+                  <Card.Body className="p-3 d-flex flex-column justify-content-between">
+                    <div>
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <Badge bg="primary-subtle" text="primary" className="border px-2 py-1 fs-8">
+                          {preset.badge}
+                        </Badge>
+                        <Badge bg="secondary" className="fs-8">
+                          {preset.schemaData.sections.length} Sections
+                        </Badge>
+                      </div>
+                      <h6 className="fw-bold text-dark mb-1">{preset.title_bn}</h6>
+                      <div className="small text-muted mb-2">{preset.title_en}</div>
+                      <p className="text-secondary small mb-3" style={{ fontSize: '12px' }}>
+                        {preset.description_bn}
+                      </p>
+                    </div>
+
+                    <Button
+                      variant="outline-primary"
+                      size="sm"
+                      className="w-100 fw-bold d-flex align-items-center justify-content-center gap-1"
+                      onClick={() => handleApplyPresetTemplate(preset)}
+                    >
+                      <Plus size={14} /> টেমপ্লেটটি লোড করুন
+                    </Button>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </Modal.Body>
+      </Modal>
+
+      {/* 3. Modal: Embed Code (iframe) */}
+      <Modal show={showEmbedModal} onHide={() => setShowEmbedModal(false)} centered size="lg">
+        <Modal.Header closeButton className="bg-light">
+          <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
+            <Code size={18} className="text-primary" />
+            <span>Embed Form on Website (ওয়েবসাইটে এম্বেড করুন)</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-3">
+          <p className="small text-muted mb-2">
+            আপনার স্কুলের মূল ওয়েবসাইট, নোটিশ পোর্টাল বা ওয়ার্ডপ্রেস সাইটে এই ফরমটি সরাসরি বসাতে নিচের HTML কোডটি কপি করুন:
+          </p>
+          <Form.Control as="textarea" rows={3} readOnly value={embedIframeCode} className="font-monospace small bg-light mb-3" />
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              navigator.clipboard.writeText(embedIframeCode);
+              toast.success('📋 এম্বেড কোড সফলভাবে কপি হয়েছে!');
+            }}
+            className="d-flex align-items-center gap-1.5"
+          >
+            <Copy size={14} /> Copy Embed Code
+          </Button>
+        </Modal.Body>
+      </Modal>
+
+      {/* 4. Modal: JSON Schema Import & Export */}
+      <Modal show={showJsonModal} onHide={() => setShowJsonModal(false)} centered size="lg">
+        <Modal.Header closeButton className="bg-light">
+          <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
+            <Settings size={18} className="text-primary" />
+            <span>JSON Schema Editor & Import/Export</span>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-3">
+          <Form.Group className="mb-2">
+            <Form.Label className="small fw-bold">JSON Schema Data:</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={12}
+              className="font-monospace small bg-light"
+              value={jsonContent}
+              onChange={(e) => setJsonContent(e.target.value)}
+              placeholder="Paste JSON schema here to import..."
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outline-secondary"
+            size="sm"
+            onClick={() => {
+              navigator.clipboard.writeText(jsonContent);
+              toast.success('📋 JSON স্কিমা কপি হয়েছে!');
+            }}
+          >
+            Copy JSON
+          </Button>
+          <Button variant="primary" size="sm" className="fw-bold" onClick={handleImportJson}>
+            ইমপোর্ট ও অ্যাপ্লাই করুন
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* 5. Modal: Add New Section */}
       <Modal show={showAddSectionModal} onHide={() => setShowAddSectionModal(false)} centered>
         <Modal.Header closeButton className="bg-light">
           <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
@@ -1477,7 +2013,7 @@ export const FormBuilderStudio: React.FC = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* 2. Modal: Add Custom Question / Field */}
+      {/* 6. Modal: Add Custom Question / Field */}
       <Modal show={showCustomQuestionModal} onHide={() => setShowCustomQuestionModal(false)} centered size="lg">
         <Modal.Header closeButton className="bg-light">
           <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
@@ -1583,6 +2119,8 @@ export const FormBuilderStudio: React.FC = () => {
                   >
                     <option value={6}>Half Width (6 Columns - পাশাপাশি)</option>
                     <option value={12}>Full Width (12 Columns - সম্পূর্ণ লাইন)</option>
+                    <option value={4}>One-Third (4 Columns)</option>
+                    <option value={3}>One-Fourth (3 Columns)</option>
                   </Form.Select>
                 </Form.Group>
               </Col>
@@ -1632,7 +2170,7 @@ export const FormBuilderStudio: React.FC = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* 3. Modal: Google Forms-Style Shareable Public Link & QR Code */}
+      {/* 7. Modal: Google Forms-Style Shareable Public Link & QR Code */}
       <Modal show={showPublicLinkModal} onHide={() => setShowPublicLinkModal(false)} centered size="lg">
         <Modal.Header closeButton className="bg-primary text-white">
           <Modal.Title className="fs-6 fw-bold d-flex align-items-center gap-2">
@@ -1779,7 +2317,7 @@ export const FormBuilderStudio: React.FC = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* 4. Modal: Responses & Submissions Viewer */}
+      {/* 8. Modal: Responses & Submissions Viewer */}
       <Modal show={showSubmissionsModal} onHide={() => setShowSubmissionsModal(false)} size="xl" centered>
         <Modal.Header closeButton className="bg-light">
           <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
@@ -2002,7 +2540,7 @@ export const FormBuilderStudio: React.FC = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* 5. Modal: Link Circulars */}
+      {/* 9. Modal: Link Circulars */}
       <Modal show={showLinkCircularModal} onHide={() => setShowLinkCircularModal(false)} centered>
         <Modal.Header closeButton className="bg-light">
           <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
@@ -2024,10 +2562,10 @@ export const FormBuilderStudio: React.FC = () => {
             </div>
             <div className="p-2 border rounded-2 bg-light d-flex align-items-center justify-content-between">
               <div>
-                <strong>Mid-Term Lateral Entry Admission 2026</strong>
-                <div className="small text-muted">Class VI to VIII</div>
+                <strong>Faculty & Lecturer Recruitment Circular 2026</strong>
+                <div className="small text-muted">Teaching & Non-Teaching Posts</div>
               </div>
-              <Form.Check />
+              <Form.Check defaultChecked />
             </div>
           </div>
         </Modal.Body>
@@ -2038,7 +2576,7 @@ export const FormBuilderStudio: React.FC = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* 6. Modal: Create New Form Template */}
+      {/* 10. Modal: Create New Form Template */}
       <Modal show={showNewTemplateModal} onHide={() => setShowNewTemplateModal(false)} centered>
         <Modal.Header closeButton className="bg-light">
           <Modal.Title className="fs-6 fw-bold text-dark d-flex align-items-center gap-2">
@@ -2053,7 +2591,7 @@ export const FormBuilderStudio: React.FC = () => {
               <Form.Control
                 type="text"
                 size="sm"
-                placeholder="যেমন: একাদশ শ্রেণি ভর্তি আবেদন ফরম ২০২৬"
+                placeholder="যেমন: একাদশ শ্রেণি বিজ্ঞান বিভাগ ভর্তি আবেদন ফরম ২০২৬"
                 value={newTemplateTitle}
                 onChange={(e) => setNewTemplateTitle(e.target.value)}
               />

@@ -27,7 +27,7 @@ class PublicFormController extends Controller
             $schema = FormSchema::where('slug', $slugOrId)->first();
         }
 
-        if (!$schema && in_array(strtolower($slugOrId), ['admission', 'job', 'tender'])) {
+        if (!$schema && in_array(strtolower($slugOrId), ['admission', 'job', 'tender', 'custom'])) {
             $schema = FormSchema::where('form_type', strtolower($slugOrId))
                 ->where('is_default', true)
                 ->first() ?: FormSchema::where('form_type', strtolower($slugOrId))->latest()->first();
