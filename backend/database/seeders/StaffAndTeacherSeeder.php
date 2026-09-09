@@ -261,7 +261,13 @@ class StaffAndTeacherSeeder extends Seeder
         if ($dummyUsers->isNotEmpty()) {
             $dummyIds = $dummyUsers->pluck('id')->toArray();
             
-            \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            $driver = DB::getDriverName();
+            if ($driver === 'sqlite') {
+                DB::statement('PRAGMA foreign_keys = OFF;');
+            } else {
+                DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            }
+
             \App\Models\LessonPlan::whereIn('teacher_id', $dummyIds)->update(['teacher_id' => $admin->id]);
             \App\Models\LessonPlan::whereIn('created_by', $dummyIds)->update(['created_by' => $admin->id]);
             \App\Models\LessonPlan::whereIn('updated_by', $dummyIds)->update(['updated_by' => $admin->id]);
@@ -270,7 +276,12 @@ class StaffAndTeacherSeeder extends Seeder
             \Illuminate\Support\Facades\DB::table('role_user')->whereIn('user_id', $dummyIds)->delete();
             \Illuminate\Support\Facades\DB::table('personal_access_tokens')->whereIn('tokenable_id', $dummyIds)->where('tokenable_type', 'App\\Models\\User')->delete();
             User::whereIn('id', $dummyIds)->forceDelete();
-            \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+            if ($driver === 'sqlite') {
+                DB::statement('PRAGMA foreign_keys = ON;');
+            } else {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            }
         }
 
         echo "Successfully seeded " . $totalSeeded . " BSISC faculty and staff with exact SL, EMP ID, departments, and removed any extra users!\n";
