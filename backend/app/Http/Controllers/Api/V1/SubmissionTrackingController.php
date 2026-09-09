@@ -22,112 +22,126 @@ class SubmissionTrackingController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $category = $request->get('category', 'lesson_plan');
-        $status = $request->get('status', 'active'); // active, inactive, all
+        try {
+            $user = $request->user();
+            $category = $request->get('category', 'lesson_plan');
+            $status = $request->get('status', 'active'); // active, inactive, all
 
-        $query = SubmissionBatch::with(['schoolClass:id,name_bn,name_en', 'creator:id,name'])
-            ->withCount(['submissions as submitted_count'])
-            ->where('category', $category);
+            $query = SubmissionBatch::with(['schoolClass:id,name_bn,name_en', 'creator:id,name'])
+                ->withCount(['submissions as submitted_count'])
+                ->where('category', $category);
 
-        if ($status === 'active') {
-            $query->where('is_active', true);
-        } elseif ($status === 'inactive') {
-            $query->where('is_active', false);
-        }
-
-        $batches = $query->latest()->get();
-
-        // Get total active teachers in system
-        $teacherRole = Role::where('name', 'teacher')->first();
-        $totalTeachersCount = $teacherRole 
-            ? $teacherRole->users()->where('is_active', true)->count() 
-            : User::where('is_active', true)->count();
-        if ($totalTeachersCount === 0) {
-            $totalTeachersCount = User::where('is_active', true)->count();
-        }
-
-        // Summary counts for badges
-        $countsSummary = SubmissionBatch::where('category', $category)
-            ->selectRaw('SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_count, SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive_count')
-            ->first();
-        $activeCount = (int)($countsSummary->active_count ?? 0);
-        $inactiveCount = (int)($countsSummary->inactive_count ?? 0);
-
-        // Fetch user submissions in 1 batch query if user logged in
-        $userSubmissions = collect();
-        if ($user && $batches->isNotEmpty()) {
-            $userSubmissions = TeacherSubmission::whereIn('batch_id', $batches->pluck('id'))
-                ->where('teacher_id', $user->id)
-                ->with(['files:id,submission_id,file_name,file_path,file_size,file_type,gdrive_file_id,gdrive_view_link,gdrive_download_link,gdrive_synced_at'])
-                ->get()
-                ->keyBy('batch_id');
-        }
-
-        $data = $batches->map(function ($batch) use ($totalTeachersCount, $userSubmissions) {
-            $submittedCount = (int)($batch->submitted_count ?? 0);
-            $notSubmittedCount = max(0, $totalTeachersCount - $submittedCount);
-            $completionPercent = $totalTeachersCount > 0 ? round(($submittedCount / $totalTeachersCount) * 100) : 0;
-
-            $mySub = $userSubmissions->get($batch->id);
-            $mySubmission = null;
-            if ($mySub) {
-                $mySubmission = [
-                    'id' => $mySub->id,
-                    'status' => $mySub->status,
-                    'update_count' => (int)($mySub->update_count ?? 1),
-                    'submitted_at' => $mySub->submitted_at?->toISOString(),
-                    'last_updated_at' => $mySub->last_updated_at?->toISOString(),
-                    'remarks' => $mySub->remarks,
-                    'gdrive_folder_id' => $mySub->gdrive_folder_id,
-                    'gdrive_folder_url' => $mySub->gdrive_folder_url,
-                    'files' => $mySub->files->map(fn($f) => [
-                        'id' => $f->id,
-                        'file_name' => $f->file_name,
-                        'file_url' => $f->file_url,
-                        'file_size' => $f->file_size,
-                        'file_type' => $f->file_type,
-                        'gdrive_file_id' => $f->gdrive_file_id,
-                        'gdrive_view_link' => $f->gdrive_view_link,
-                        'gdrive_download_link' => $f->gdrive_download_link,
-                        'gdrive_synced_at' => $f->gdrive_synced_at?->toISOString(),
-                    ]),
-                ];
+            if ($status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($status === 'inactive') {
+                $query->where('is_active', false);
             }
 
-            return [
-                'id' => $batch->id,
-                'category' => $batch->category,
-                'title' => $batch->title,
-                'class_id' => $batch->class_id,
-                'class_name' => $batch->schoolClass ? ($batch->schoolClass->name_bn ?: $batch->schoolClass->name_en) : 'সব ক্লাস',
-                'start_date' => $batch->start_date?->format('Y-m-d') ?: date('Y-m-d'),
-                'end_date' => $batch->end_date?->format('Y-m-d') ?: date('Y-m-d'),
-                'date_range_display' => ($batch->start_date ? $batch->start_date->format('d M') : '') . ' - ' . ($batch->end_date ? $batch->end_date->format('d M Y') : ''),
-                'allow_multiple_files' => (bool)$batch->allow_multiple_files,
-                'instructions' => $batch->instructions,
-                'is_active' => (bool)$batch->is_active,
-                'gdrive_folder_id' => $batch->gdrive_folder_id,
-                'gdrive_folder_url' => $batch->gdrive_folder_url,
-                'created_at' => $batch->created_at?->toISOString(),
-                'stats' => [
-                    'total_teachers' => $totalTeachersCount,
-                    'submitted_count' => $submittedCount,
-                    'not_submitted_count' => $notSubmittedCount,
-                    'completion_percent' => $completionPercent,
-                ],
-                'my_submission' => $mySubmission,
-            ];
-        });
+            $batches = $query->latest()->get();
 
-        return $this->successResponse([
-            'batches' => $data,
-            'counts' => [
-                'active' => $activeCount,
-                'inactive' => $inactiveCount,
-                'total_teachers' => $totalTeachersCount,
-            ],
-        ]);
+            // Get total active teachers in system
+            $teacherRole = Role::where('name', 'teacher')->first();
+            $totalTeachersCount = $teacherRole 
+                ? $teacherRole->users()->where('is_active', true)->count() 
+                : User::where('is_active', true)->count();
+            if ($totalTeachersCount === 0) {
+                $totalTeachersCount = User::where('is_active', true)->count();
+            }
+
+            // Summary counts for badges
+            $countsSummary = SubmissionBatch::where('category', $category)
+                ->selectRaw('SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_count, SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive_count')
+                ->first();
+            $activeCount = (int)($countsSummary->active_count ?? 0);
+            $inactiveCount = (int)($countsSummary->inactive_count ?? 0);
+
+            // Fetch user submissions in 1 batch query if user logged in
+            $userSubmissions = collect();
+            if ($user && $batches->isNotEmpty()) {
+                $userSubmissions = TeacherSubmission::whereIn('batch_id', $batches->pluck('id'))
+                    ->where('teacher_id', $user->id)
+                    ->with(['files:id,submission_id,file_name,file_path,file_size,file_type,gdrive_file_id,gdrive_view_link,gdrive_download_link,gdrive_synced_at'])
+                    ->get()
+                    ->keyBy('batch_id');
+            }
+
+            $data = $batches->map(function ($batch) use ($totalTeachersCount, $userSubmissions) {
+                $submittedCount = (int)($batch->submitted_count ?? 0);
+                $notSubmittedCount = max(0, $totalTeachersCount - $submittedCount);
+                $completionPercent = $totalTeachersCount > 0 ? round(($submittedCount / $totalTeachersCount) * 100) : 0;
+
+                $mySub = $userSubmissions->get($batch->id);
+                $mySubmission = null;
+                if ($mySub) {
+                    $mySubmission = [
+                        'id' => $mySub->id,
+                        'status' => $mySub->status,
+                        'update_count' => (int)($mySub->update_count ?? 1),
+                        'submitted_at' => $mySub->submitted_at?->toISOString(),
+                        'last_updated_at' => $mySub->last_updated_at?->toISOString(),
+                        'remarks' => $mySub->remarks,
+                        'gdrive_folder_id' => $mySub->gdrive_folder_id,
+                        'gdrive_folder_url' => $mySub->gdrive_folder_url,
+                        'files' => $mySub->files->map(fn($f) => [
+                            'id' => $f->id,
+                            'file_name' => $f->file_name,
+                            'file_url' => $f->file_url,
+                            'file_size' => $f->file_size,
+                            'file_type' => $f->file_type,
+                            'gdrive_file_id' => $f->gdrive_file_id,
+                            'gdrive_view_link' => $f->gdrive_view_link,
+                            'gdrive_download_link' => $f->gdrive_download_link,
+                            'gdrive_synced_at' => $f->gdrive_synced_at?->toISOString(),
+                        ]),
+                    ];
+                }
+
+                return [
+                    'id' => $batch->id,
+                    'category' => $batch->category,
+                    'title' => $batch->title,
+                    'class_id' => $batch->class_id,
+                    'class_name' => $batch->schoolClass ? ($batch->schoolClass->name_bn ?: $batch->schoolClass->name_en) : 'সব ক্লাস',
+                    'start_date' => $batch->start_date?->format('Y-m-d') ?: date('Y-m-d'),
+                    'end_date' => $batch->end_date?->format('Y-m-d') ?: date('Y-m-d'),
+                    'date_range_display' => ($batch->start_date ? $batch->start_date->format('d M') : '') . ' - ' . ($batch->end_date ? $batch->end_date->format('d M Y') : ''),
+                    'allow_multiple_files' => (bool)$batch->allow_multiple_files,
+                    'instructions' => $batch->instructions,
+                    'is_active' => (bool)$batch->is_active,
+                    'gdrive_folder_id' => $batch->gdrive_folder_id,
+                    'gdrive_folder_url' => $batch->gdrive_folder_url,
+                    'created_at' => $batch->created_at?->toISOString(),
+                    'stats' => [
+                        'total_teachers' => $totalTeachersCount,
+                        'submitted_count' => $submittedCount,
+                        'not_submitted_count' => $notSubmittedCount,
+                        'completion_percent' => $completionPercent,
+                    ],
+                    'my_submission' => $mySubmission,
+                ];
+            });
+
+            return $this->successResponse([
+                'batches' => $data,
+                'counts' => [
+                    'active' => $activeCount,
+                    'inactive' => $inactiveCount,
+                    'total_teachers' => $totalTeachersCount,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('SubmissionTrackingController index error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->successResponse([
+                'batches' => [],
+                'counts' => [
+                    'active' => 0,
+                    'inactive' => 0,
+                    'total_teachers' => 0,
+                ],
+            ]);
+        }
     }
 
     public function store(Request $request, GoogleDriveService $driveService): JsonResponse

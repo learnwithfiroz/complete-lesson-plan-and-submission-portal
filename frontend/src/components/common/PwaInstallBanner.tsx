@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Badge } from 'react-bootstrap';
 import { Download, X } from 'lucide-react';
 import { useTranslation } from '../../locales/i18n';
@@ -11,6 +11,17 @@ export const PwaInstallBanner: React.FC = () => {
   const [isDismissed, setIsDismissed] = useState<boolean>(() => {
     return sessionStorage.getItem('pwa_prompt_dismissed') === 'true';
   });
+
+  // Auto-hide banner after 1 minute (60,000ms)
+  useEffect(() => {
+    if (isInstalled || isDismissed) return;
+
+    const timer = setTimeout(() => {
+      setIsDismissed(true);
+    }, 60000); // 1 minute auto-hide
+
+    return () => clearTimeout(timer);
+  }, [isInstalled, isDismissed]);
 
   const handleDismiss = () => {
     setIsDismissed(true);
