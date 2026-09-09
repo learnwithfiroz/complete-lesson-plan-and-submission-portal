@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Button, Form, Badge, Table, InputGroup } from 'react-bootstrap';
 import { useTranslation } from '../../locales/i18n';
 import { useAuthStore } from '../../store/authStore';
-import { noticeApi, broadcastNoticesUpdated } from '../../api/notices';
+import { noticeApi } from '../../api/notices';
 import type { Notice } from '../../types/notice';
 import { NoticeDetailModal } from '../../components/notices/NoticeDetailModal';
 import { NoticeModal } from '../../components/notices/NoticeModal';
@@ -68,12 +68,13 @@ export const NoticeBoard: React.FC = () => {
         page: currentPage,
         per_page: 9,
       });
-      setNotices(res.data);
-      setTotalPages(res.meta.last_page);
-      setTotalRecords(res.meta.total);
+      if (res && Array.isArray(res.data)) {
+        setNotices(res.data);
+        setTotalPages(res.meta?.last_page ?? 1);
+        setTotalRecords(res.meta?.total ?? res.data.length);
+      }
     } catch (err) {
       console.error('Failed to load notices', err);
-      toast.error('Failed to load notices');
     } finally {
       setLoading(false);
     }
@@ -84,7 +85,6 @@ export const NoticeBoard: React.FC = () => {
     try {
       const res = await noticeApi.togglePin(id);
       toast.success(res.message);
-      broadcastNoticesUpdated();
       loadNotices();
     } catch {
       toast.error('Failed to toggle pin');
@@ -99,14 +99,13 @@ export const NoticeBoard: React.FC = () => {
     setNotices((prev) => prev.filter((n) => n.id !== targetId));
     setTotalRecords((prev) => Math.max(0, prev - 1));
     setDeleteNoticeId(null);
-    broadcastNoticesUpdated(targetId);
 
     try {
       await noticeApi.deleteNotice(targetId);
       toast.success(t('notices.deleted_success', 'Notice deleted successfully'));
-      broadcastNoticesUpdated(targetId);
       loadNotices();
-    } catch {
+    } catch (err) {
+      console.error('Failed to delete notice', err);
       toast.error('Failed to delete notice');
       loadNotices();
     }

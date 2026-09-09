@@ -28,10 +28,17 @@ export const NoticeTicker: React.FC = () => {
       loadTicker();
     };
 
+    const handleFocus = () => loadTicker();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadTicker();
+      }
+    };
+
     // 1. Same-tab custom event
     window.addEventListener('notices-updated', handleUpdate);
-    window.addEventListener('focus', () => loadTicker());
-    document.addEventListener('visibilitychange', () => loadTicker());
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     // 2. Cross-tab BroadcastChannel
     let broadcastChannel: BroadcastChannel | null = null;
@@ -73,8 +80,8 @@ export const NoticeTicker: React.FC = () => {
     return () => {
       clearInterval(interval);
       window.removeEventListener('notices-updated', handleUpdate);
-      window.removeEventListener('focus', handleUpdate);
-      document.removeEventListener('visibilitychange', handleUpdate);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('storage', handleStorage);
       if (broadcastChannel) {
         broadcastChannel.close();
