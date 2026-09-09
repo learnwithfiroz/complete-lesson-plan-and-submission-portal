@@ -128,7 +128,7 @@ class GoogleDriveService
                 }
 
                 Log::error('Google Drive Token Refresh Error', ['response' => $response->json()]);
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 Log::error('Google Drive Token Request Exception: ' . $e->getMessage());
             }
         }
@@ -176,7 +176,7 @@ class GoogleDriveService
             }
 
             Log::error('Google Drive Service Account Auth Error', ['response' => $response->json()]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Google Drive Service Account Exception: ' . $e->getMessage());
         }
 
@@ -240,7 +240,7 @@ class GoogleDriveService
                     'webViewLink' => $data['webViewLink'] ?? "https://drive.google.com/drive/folders/{$data['id']}",
                 ];
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Google Drive Folder Creation Exception: ' . $e->getMessage());
         }
 
@@ -302,7 +302,7 @@ class GoogleDriveService
                         'role' => 'reader',
                         'type' => 'anyone',
                     ]);
-                } catch (\Exception $permErr) {
+                } catch (\Throwable $permErr) {
                     // silent permission fallback
                 }
 
@@ -315,7 +315,7 @@ class GoogleDriveService
             }
 
             Log::error('Google Drive File Upload Error', ['response' => $uploadRes->json()]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Google Drive File Upload Exception: ' . $e->getMessage());
         }
 

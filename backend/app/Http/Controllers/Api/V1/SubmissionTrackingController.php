@@ -326,78 +326,104 @@ class SubmissionTrackingController extends Controller
 
     public function submitFiles(Request $request, SubmissionBatch $batch, GoogleDriveService $driveService): JsonResponse
     {
-        $user = $request->user();
+        try {
+            $user = $request->user();
 
-        if (!$batch->is_active) {
-            return $this->errorResponse('এই ব্যাচটি বর্তমানে বন্ধ বা লক করা আছে। নতুন ফাইল আপলোড করা যাবে না।', 422);
+            if (!$user) {
+                return $this->errorResponse('আপনার সেশন শেষ হয়ে গেছে। অনুগ্রহ করে পুনরায় লগইন করুন।', 401);
+            }
+
+            if (!$batch->is_active) {
+                return $this->errorResponse('এই ব্যাচটি বর্তমানে বন্ধ বা লক করা আছে। নতুন ফাইল আপলোড করা যাবে না।', 422);
+            }
+
+            $validated = $request->validate([
+                'files' => ['required', 'array', 'min:1'],
+                'files.*' => ['required', 'file', 'max:51200'], // 50MB max
+                'remarks' => ['nullable', 'string', 'max:1000'],
+            ], [
+                'files.required' => 'অন্তত একটি ফাইল নির্বাচন করা আবশ্যক।',
+                'files.array' => 'ফাইল ফরম্যাট সঠিক নয়।',
+                'files.min' => 'অন্তত একটি ফাইল নির্বাচন করুন।',
+                'files.*.file' => 'আপলোড করা আইটেমটি সঠিক ফাইল হতে হবে।',
+                'files.*.max' => 'প্রতিটি ফাইলের সাইজ সর্বোচ্চ ৫০ মেগাবাইট (50MB) হতে পারবে।',
+            ]);
+
+            return DB::transaction(function () use ($request, $batch, $user, $driveService) {
+                $submission = TeacherSubmission::firstOrCreate(
+                    [
+                        'batch_id' => $batch->id,
+                        'teacher_id' => $user->id,
+                    ],
+                    [
+                        'status' => 'submitted',
+                        'update_count' => 1,
+                        'submitted_at' => now(),
+                        'remarks' => $request->input('remarks'),
+                    ]
+                );
+
+                if (!$submission->wasRecentlyCreated) {
+                    // This is an update / revision
+                    $submission->increment('update_count');
+                    $submission->update([
+                        'last_updated_at' => now(),
+                        'status' => 'submitted',
+                    ]);
+                }
+
+                if ($request->filled('remarks')) {
+                    $submission->update(['remarks' => $request->input('remarks')]);
+                }
+
+                if (!$batch->allow_multiple_files) {
+                    // Remove existing files if single file mode
+                    $submission->files()->delete();
+                }
+
+                $uploadedFiles = [];
+                $targetDir = "submissions/{$batch->id}/{$user->id}";
+                Storage::disk('public')->makeDirectory($targetDir);
+
+                foreach ($request->file('files') as $file) {
+                    $originalName = $file->getClientOriginalName();
+                    $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $originalName);
+                    $path = $file->storeAs($targetDir, $filename, 'public');
+
+                    $subFile = SubmissionFile::create([
+                        'submission_id' => $submission->id,
+                        'file_path' => $path,
+                        'file_name' => $originalName,
+                        'file_size' => $file->getSize(),
+                        'file_type' => $file->getClientOriginalExtension() ?: pathinfo($originalName, PATHINFO_EXTENSION),
+                    ]);
+                    $uploadedFiles[] = $subFile;
+                }
+
+                $submission->load(['files', 'teacher', 'batch']);
+
+                // Automatic Google Drive Sync under [Batch Title] / [Teacher Name (EMP ID)]
+                try {
+                    $driveService->syncTeacherSubmission($submission);
+                } catch (\Throwable $driveEx) {
+                    Log::warning('Google Drive auto-sync notice: ' . $driveEx->getMessage());
+                }
+
+                $submission->load('files');
+
+                return $this->successResponse($submission, 'পাঠ পরিকল্পনা সফলভাবে জমা ও সংরক্ষিত হয়েছে!', 201);
+            });
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            $msg = collect($ve->errors())->flatten()->first() ?: 'ফাইল যাচাইকরণ ব্যর্থ হয়েছে।';
+            return $this->errorResponse($msg, 422);
+        } catch (\Throwable $e) {
+            Log::error('Teacher SubmitFiles Exception: ' . $e->getMessage(), [
+                'batch_id' => $batch->id ?? null,
+                'user_id' => $request->user()?->id ?? null,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->errorResponse('ফাইল আপলোড প্রক্রিয়া সম্পন্ন করা যায়নি: ' . $e->getMessage(), 500);
         }
-
-        $request->validate([
-            'files' => ['required', 'array', 'min:1'],
-            'files.*' => ['required', 'file', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,jpg,jpeg,png', 'max:25600'],
-            'remarks' => ['nullable', 'string'],
-        ]);
-
-        return DB::transaction(function () use ($request, $batch, $user, $driveService) {
-            $submission = TeacherSubmission::firstOrCreate(
-                [
-                    'batch_id' => $batch->id,
-                    'teacher_id' => $user->id,
-                ],
-                [
-                    'status' => 'submitted',
-                    'update_count' => 1,
-                    'submitted_at' => now(),
-                    'remarks' => $request->input('remarks'),
-                ]
-            );
-
-            if (!$submission->wasRecentlyCreated) {
-                // This is an update / revision
-                $submission->increment('update_count');
-                $submission->update([
-                    'last_updated_at' => now(),
-                    'status' => 'submitted',
-                ]);
-            }
-
-            if ($request->filled('remarks')) {
-                $submission->update(['remarks' => $request->input('remarks')]);
-            }
-
-            if (!$batch->allow_multiple_files) {
-                // Remove existing files if single file mode
-                $submission->files()->delete();
-            }
-
-            $uploadedFiles = [];
-            foreach ($request->file('files') as $file) {
-                $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
-                $path = $file->storeAs("submissions/{$batch->id}/{$user->id}", $filename, 'public');
-
-                $subFile = SubmissionFile::create([
-                    'submission_id' => $submission->id,
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_size' => $file->getSize(),
-                    'file_type' => $file->getClientOriginalExtension(),
-                ]);
-                $uploadedFiles[] = $subFile;
-            }
-
-            $submission->load(['files', 'teacher', 'batch']);
-
-            // Automatic Google Drive Sync under [Batch Title] / [Teacher Name (EMP ID)]
-            try {
-                $driveService->syncTeacherSubmission($submission);
-            } catch (\Exception $e) {
-                Log::warning('Google Drive auto-sync notice: ' . $e->getMessage());
-            }
-
-            $submission->load('files');
-
-            return $this->successResponse($submission, 'পাঠ পরিকল্পনা সফলভাবে জমা ও Google Drive ফোল্ডারে সংরক্ষিত হয়েছে!', 201);
-        });
     }
 
     public function syncDrive(SubmissionBatch $batch, GoogleDriveService $driveService): JsonResponse
