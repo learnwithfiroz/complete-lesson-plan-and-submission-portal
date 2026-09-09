@@ -9,19 +9,25 @@ use App\Models\SchoolClass;
 use App\Models\Subject;
 use App\Models\TeacherAssignment;
 use App\Models\User;
+use App\Traits\ApiResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
+    use ApiResponseTrait;
+
     public function stats(Request $request): JsonResponse
     {
-        $user = $request->user();
-
         try {
+            $user = $request->user();
+            if (!$user) {
+                return $this->unauthorizedResponse();
+            }
+
             $isTeacher = $user->hasRole('teacher') && !$user->hasRole(['super_admin', 'principal', 'academic_coordinator']);
 
             $baseQuery = LessonPlan::query();
@@ -52,8 +58,8 @@ class DashboardController extends Controller
             $dailySubmissions = (clone $baseQuery)
                 ->where('lesson_plans.lesson_date', '>=', $sevenDaysAgo)
                 ->select(DB::raw('DATE(lesson_plans.lesson_date) as date'), DB::raw('COUNT(*) as count'))
-                ->groupBy('date')
-                ->orderBy('date')
+                ->groupBy(DB::raw('DATE(lesson_plans.lesson_date)'))
+                ->orderBy(DB::raw('DATE(lesson_plans.lesson_date)'))
                 ->get()
                 ->pluck('count', 'date');
 
@@ -70,7 +76,7 @@ class DashboardController extends Controller
                 ->join('subjects', 'lesson_plans.subject_id', '=', 'subjects.id')
                 ->select('subjects.name_en as subject_name', DB::raw('COUNT(lesson_plans.id) as count'))
                 ->groupBy('subjects.name_en', 'subjects.id')
-                ->orderByDesc('count')
+                ->orderByDesc(DB::raw('COUNT(lesson_plans.id)'))
                 ->limit(6)
                 ->get();
 
@@ -110,20 +116,20 @@ class DashboardController extends Controller
                 'recent_plans' => $recentPlans,
                 'admin_overview' => $adminOverview,
             ];
+
+            return $this->successResponse($data);
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Dashboard stats error: ' . $e->getMessage());
-            $data = [
+            Log::error('Dashboard stats error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return $this->successResponse([
                 'summary' => ['total' => 0, 'draft' => 0, 'submitted' => 0, 'under_review' => 0, 'approved' => 0, 'returned' => 0, 'rejected' => 0],
                 'submission_trends' => ['labels' => [], 'data' => []],
                 'plans_by_subject' => [],
                 'recent_plans' => [],
                 'admin_overview' => null,
-            ];
+            ]);
         }
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $data,
-        ]);
     }
 }

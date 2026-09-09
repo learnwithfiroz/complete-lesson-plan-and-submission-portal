@@ -55,6 +55,8 @@ apiClient.interceptors.response.use(
       url.includes('/live-ticker') ||
       url.includes('/notices') ||
       url.includes('/system/status') ||
+      url.includes('/dashboard/stats') ||
+      url.includes('/user') ||
       url.includes('/form-schemas/default');
 
     if (status === 401) {
