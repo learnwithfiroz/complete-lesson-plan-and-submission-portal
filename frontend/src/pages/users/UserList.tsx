@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Button, Row, Col, Badge, Table, Form } from 'react-bootstrap';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Edit2, Trash2, Power, GraduationCap, Briefcase, Wrench, Users, Copy, Check } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, Power, GraduationCap, Briefcase, Wrench, Users, Copy, Check, Download, Upload } from 'lucide-react';
 import { usersApi } from '../../api/users';
 import { rolesApi } from '../../api/roles';
 import { departmentsApi } from '../../api/departments';
@@ -10,6 +10,7 @@ import { Pagination } from '../../components/common/Pagination';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { LoadingSpinner } from '../../components/feedback/LoadingSpinner';
 import { UserModal } from './UserModal';
+import { TeacherImportModal } from './TeacherImportModal';
 import { toast } from 'react-toastify';
 import type { User } from '../../types/auth';
 import type { UserFormData, UserFilterParams } from '../../api/users';
@@ -17,6 +18,8 @@ import type { UserFormData, UserFilterParams } from '../../api/users';
 export const UserList: React.FC = () => {
   const queryClient = useQueryClient();
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   const [filters, setFilters] = useState<UserFilterParams>({
     search: '',
@@ -110,11 +113,23 @@ export const UserList: React.FC = () => {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      await usersApi.exportTeachers(filters);
+      toast.success('শিক্ষক ও কর্মী তালিকা CSV এক্সপোর্ট সম্পন্ন হয়েছে।');
+    } catch (err: any) {
+      toast.error('এক্সপোর্ট করতে সমস্যা হয়েছে।');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const counts = usersData?.meta?.counts;
 
   return (
     <div className="user-list-container">
-      <div className="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center justify-content-between gap-3 mb-3">
+      <div className="d-flex flex-column flex-md-row align-items-stretch align-items-md-center justify-content-between gap-3 mb-3">
         <div>
           <h2 className="fs-5 fw-bold text-dark mb-1">
             শিক্ষক ও কর্মী তালিকা (Faculty & Staff Management)
@@ -124,14 +139,37 @@ export const UserList: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          className="d-flex align-items-center justify-content-center gap-2 rounded-3 fw-bold btn-institutional px-3 py-2 shadow-sm text-nowrap"
-          onClick={handleOpenCreate}
-        >
-          <UserPlus size={18} />
-          <span>নতুন ব্যবহারকারী যোগ করুন</span>
-        </Button>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <Button
+            variant="outline-success"
+            className="d-flex align-items-center justify-content-center gap-1.5 rounded-3 fw-semibold px-3 py-2 shadow-xs text-nowrap fs-7"
+            onClick={handleExport}
+            disabled={isExporting}
+            title="বর্তমান ফিল্টার অনুযায়ী তালিকা এক্সেল/CSV ফাইল হিসেবে ডাউনলোড করুন"
+          >
+            <Download size={16} />
+            <span>{isExporting ? 'এক্সপোর্ট হচ্ছে...' : 'এক্সপোর্ট (Export CSV)'}</span>
+          </Button>
+
+          <Button
+            variant="outline-primary"
+            className="d-flex align-items-center justify-content-center gap-1.5 rounded-3 fw-semibold px-3 py-2 shadow-xs text-nowrap fs-7"
+            onClick={() => setImportModalOpen(true)}
+            title="CSV বা Excel ফাইল থেকে একসাথে একাধিক শিক্ষক যোগ/আপডেট করুন"
+          >
+            <Upload size={16} />
+            <span>বাল্ক ইমপোর্ট (Bulk Import)</span>
+          </Button>
+
+          <Button
+            variant="primary"
+            className="d-flex align-items-center justify-content-center gap-2 rounded-3 fw-bold btn-institutional px-3 py-2 shadow-sm text-nowrap fs-7"
+            onClick={handleOpenCreate}
+          >
+            <UserPlus size={18} />
+            <span>নতুন ব্যবহারকারী</span>
+          </Button>
+        </div>
       </div>
 
       {/* Role Group Category Pills (All, Teachers, Leadership, Staff, Support) */}
@@ -607,6 +645,12 @@ export const UserList: React.FC = () => {
           setSelectedUser(null);
         }}
         onSubmit={(data) => saveMutation.mutate(data)}
+      />
+
+      <TeacherImportModal
+        show={importModalOpen}
+        onHide={() => setImportModalOpen(false)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['users'] })}
       />
 
       <ConfirmDialog

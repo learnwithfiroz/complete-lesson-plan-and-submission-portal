@@ -115,8 +115,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('/academic/teacher-assignments/{teacherAssignment}', [TeacherAssignmentController::class, 'destroy']);
         Route::get('/academic/my-assignments', [TeacherAssignmentController::class, 'myAssignments']);
 
-        // Lesson Plans CRUD, Workflow & PDF
         Route::get('/lesson-plans-calendar', [LessonPlanController::class, 'calendar']);
+        Route::get('/users/export', [BulkImportController::class, 'exportTeachers']);
+        Route::get('/users/import-sample', [BulkImportController::class, 'downloadSampleTemplate']);
         Route::post('/users/import-teachers', [BulkImportController::class, 'importTeachers']);
         Route::post('/academic/import-subjects', [BulkImportController::class, 'importSubjects']);
         Route::get('/lesson-plans', [LessonPlanController::class, 'index']);

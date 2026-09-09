@@ -66,4 +66,58 @@ export const usersApi = {
     const response = await apiClient.delete<ApiResponse<null>>(`/api/v1/users/${id}`);
     return response.data;
   },
+
+  exportTeachers: async (params: UserFilterParams = {}): Promise<void> => {
+    const cleanParams: any = {};
+    if (params.search) cleanParams.search = params.search;
+    if (params.role) cleanParams.role = params.role;
+    if (params.role_group) cleanParams.role_group = params.role_group;
+    if (params.department_id) cleanParams.department_id = params.department_id;
+    if (params.is_active !== undefined && params.is_active !== '') cleanParams.is_active = params.is_active;
+
+    const response = await apiClient.get('/api/v1/users/export', {
+      params: cleanParams,
+      responseType: 'blob',
+    });
+    const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.setAttribute('download', `BSISC_Faculty_Staff_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  downloadImportTemplate: async (): Promise<void> => {
+    const response = await apiClient.get('/api/v1/users/import-sample', {
+      responseType: 'blob',
+    });
+    const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'BSISC_Teacher_Import_Template.csv');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+
+  importTeachers: async (file: File): Promise<ApiResponse<{ imported_count: number; updated_count: number; errors: string[] }>> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<ApiResponse<{ imported_count: number; updated_count: number; errors: string[] }>>(
+      '/api/v1/users/import-teachers',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  },
 };
