@@ -103,10 +103,17 @@ class LessonPlanController extends Controller
         $data = $request->validated();
         if ($request->hasFile('attachment')) {
             $file = $request->file('attachment');
-            $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $file->getClientOriginalName());
-            $path = $file->storeAs('lesson_plans', $filename, 'public');
-            $data['attachment_path'] = $path;
-            $data['attachment_name'] = $file->getClientOriginalName();
+            if ($file->isValid()) {
+                $targetDir = storage_path('app/public/lesson_plans');
+                if (!file_exists($targetDir)) {
+                    @mkdir($targetDir, 0755, true);
+                }
+                $originalName = $file->getClientOriginalName();
+                $filename = time() . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $originalName);
+                $file->move($targetDir, $filename);
+                $data['attachment_path'] = 'lesson_plans/' . $filename;
+                $data['attachment_name'] = $originalName;
+            }
         }
 
         $plan = $this->lessonPlanService->createLessonPlan($data, $request->user());

@@ -65,7 +65,7 @@ class StoreLessonPlanRequest extends FormRequest
             'special_needs_support' => ['nullable', 'string'],
             'teacher_reflection' => ['nullable', 'string'],
             'additional_notes' => ['nullable', 'string'],
-            'attachment' => ['nullable', 'file', 'mimes:pdf,doc,docx,ppt,pptx,xls,xlsx,jpg,jpeg,png', 'max:20480'],
+            'attachment' => ['nullable'],
             'attachment_path' => ['nullable', 'string'],
             'attachment_name' => ['nullable', 'string'],
 

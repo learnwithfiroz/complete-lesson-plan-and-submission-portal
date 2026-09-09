@@ -114,11 +114,15 @@ class BulkImportController extends Controller
 
     public function importTeachers(Request $request): JsonResponse
     {
-        $request->validate([
-            'file' => 'required|file|max:5120',
-        ]);
+        if (!$request->hasFile('file') || !$request->file('file')->isValid()) {
+            return $this->errorResponse('অনুগ্রহ করে একটি সঠিক CSV/Excel ফাইল নির্বাচন করুন।', 422);
+        }
 
         $file = $request->file('file');
+        if ($file->getSize() > 5242880) { // 5MB
+            return $this->errorResponse('ফাইলের সাইজ সর্বোচ্চ ৫ মেগাবাইট (5MB) হতে পারবে।', 422);
+        }
+
         $rawContent = file_get_contents($file->getRealPath());
 
         // Remove BOM if present
@@ -265,11 +269,20 @@ class BulkImportController extends Controller
 
     public function importSubjects(Request $request): JsonResponse
     {
-        $request->validate([
-            'file' => 'required|file|mimes:csv,txt|max:2048',
-        ]);
+        if (!$request->hasFile('file') || !$request->file('file')->isValid()) {
+            return $this->errorResponse('Please select a valid CSV or TXT file.', 422);
+        }
 
         $file = $request->file('file');
+        if ($file->getSize() > 2097152) { // 2MB
+            return $this->errorResponse('File size cannot exceed 2MB.', 422);
+        }
+
+        $ext = strtolower($file->getClientOriginalExtension() ?: pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION));
+        if (!in_array($ext, ['csv', 'txt', 'tsv'])) {
+            return $this->errorResponse('Only CSV or text files are supported.', 422);
+        }
+
         $path = $file->getRealPath();
         $data = array_map('str_getcsv', file($path));
 
